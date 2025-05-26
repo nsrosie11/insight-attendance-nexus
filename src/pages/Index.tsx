@@ -11,6 +11,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 const Index = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
   const [selectedDate, setSelectedDate] = useState('2024-01-15');
+  const [selectedEmployeeType, setSelectedEmployeeType] = useState('all');
 
   // Data karyawan tetap
   const permanentEmployeeData = [
@@ -24,57 +25,138 @@ const Index = () => {
     { name: 'Perempuan', value: 4, color: '#F59E0B' }
   ];
 
-  // Data status kehadiran
+  // Data status kehadiran - updated with person counts
   const attendanceStatusData = [
-    { name: 'Tepat Waktu', value: 75, color: '#10B981' },
-    { name: 'Terlambat', value: 25, color: '#EF4444' }
+    { name: 'Tepat Waktu', value: 10, color: '#10B981' },
+    { name: 'Terlambat', value: 8, color: '#EF4444' }
   ];
 
-  // Sample student data
-  const studentsData = [
-    {
-      id: 1,
-      name: 'Dinda',
-      status: 'Karyawan Magang',
-      gender: 'Perempuan',
-      onTime: 4,
-      late: 7,
-      absent: 10,
-      history: [
-        { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
-        { date: '2024-01-14', timeIn: '08:15', timeOut: '17:00', status: 'Terlambat' },
-        { date: '2024-01-13', timeIn: '-', timeOut: '-', status: 'Tidak Hadir' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Ahmad',
-      status: 'Karyawan Tetap',
-      gender: 'Laki-laki',
-      onTime: 15,
-      late: 3,
-      absent: 2,
-      history: [
-        { date: '2024-01-15', timeIn: '07:55', timeOut: '17:00', status: 'Tepat Waktu' },
-        { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
-        { date: '2024-01-13', timeIn: '08:10', timeOut: '17:00', status: 'Terlambat' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Sari',
-      status: 'Karyawan Magang',
-      gender: 'Perempuan',
-      onTime: 8,
-      late: 5,
-      absent: 7,
-      history: [
-        { date: '2024-01-15', timeIn: '08:05', timeOut: '17:00', status: 'Terlambat' },
-        { date: '2024-01-14', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' },
-        { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
-      ]
-    }
+  // Dummy data karyawan tetap (15 orang)
+  const permanentEmployees = [
+    { id: 1, name: 'Ahmad Suharto', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 18, late: 2, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:55', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:10', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 2, name: 'Budi Santoso', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 19, late: 1, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '07:50', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:05', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 3, name: 'Candra Wijaya', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 17, late: 3, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:12', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 4, name: 'Dedi Kurniawan', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 16, late: 4, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:08', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-14', timeIn: '07:55', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 5, name: 'Eko Prasetyo', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 18, late: 2, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:57', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:15', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 6, name: 'Fajar Nugroho', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 19, late: 1, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 7, name: 'Gunawan Saputra', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 17, late: 3, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:07', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 8, name: 'Hendra Kusuma', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 18, late: 2, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:11', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 9, name: 'Indra Permana', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 19, late: 1, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:56', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 10, name: 'Joko Susilo', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 16, late: 4, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:09', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-14', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:05', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 11, name: 'Kurnia Sanjaya', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 18, late: 2, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:12', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 12, name: 'Lukman Hakim', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 17, late: 3, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:08', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:57', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 13, name: 'Muhammad Iqbal', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 19, late: 1, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '07:55', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 14, name: 'Nur Rahman', status: 'Karyawan Tetap', gender: 'Laki-laki', onTime: 18, late: 2, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:06', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 15, name: 'Siti Nurhaliza', status: 'Karyawan Tetap', gender: 'Perempuan', onTime: 17, late: 3, absent: 1, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:10', timeOut: '17:00', status: 'Terlambat' }
+    ]}
   ];
+
+  // Dummy data karyawan magang (7 orang)
+  const internEmployees = [
+    { id: 16, name: 'Dinda Sari', status: 'Karyawan Magang', gender: 'Perempuan', onTime: 4, late: 7, absent: 10, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:15', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '-', timeOut: '-', status: 'Tidak Hadir' }
+    ]},
+    { id: 17, name: 'Rina Kusumawati', status: 'Karyawan Magang', gender: 'Perempuan', onTime: 8, late: 5, absent: 7, history: [
+      { date: '2024-01-15', timeIn: '08:05', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-14', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 18, name: 'Maya Dewi', status: 'Karyawan Magang', gender: 'Perempuan', onTime: 6, late: 8, absent: 6, history: [
+      { date: '2024-01-15', timeIn: '08:12', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:08', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 19, name: 'Putri Ayu', status: 'Karyawan Magang', gender: 'Perempuan', onTime: 7, late: 6, absent: 7, history: [
+      { date: '2024-01-15', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:11', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '-', timeOut: '-', status: 'Tidak Hadir' }
+    ]},
+    { id: 20, name: 'Rizki Pratama', status: 'Karyawan Magang', gender: 'Laki-laki', onTime: 9, late: 4, absent: 7, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:07', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:58', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]},
+    { id: 21, name: 'Andi Setiawan', status: 'Karyawan Magang', gender: 'Laki-laki', onTime: 5, late: 9, absent: 6, history: [
+      { date: '2024-01-15', timeIn: '08:15', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-14', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-13', timeIn: '08:20', timeOut: '17:00', status: 'Terlambat' }
+    ]},
+    { id: 22, name: 'Bayu Firmansyah', status: 'Karyawan Magang', gender: 'Laki-laki', onTime: 8, late: 6, absent: 6, history: [
+      { date: '2024-01-15', timeIn: '08:00', timeOut: '17:00', status: 'Tepat Waktu' },
+      { date: '2024-01-14', timeIn: '08:09', timeOut: '17:00', status: 'Terlambat' },
+      { date: '2024-01-13', timeIn: '07:59', timeOut: '17:00', status: 'Tepat Waktu' }
+    ]}
+  ];
+
+  // Combine data based on filter
+  const getFilteredEmployees = () => {
+    if (selectedEmployeeType === 'permanent') return permanentEmployees;
+    if (selectedEmployeeType === 'intern') return internEmployees;
+    return [...permanentEmployees, ...internEmployees];
+  };
+
+  const studentsData = getFilteredEmployees();
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -152,7 +234,7 @@ const Index = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-orange-100">Kehadiran Hari Ini</p>
-                  <p className="text-3xl font-bold">75%</p>
+                  <p className="text-3xl font-bold">56%</p>
                 </div>
                 <Clock className="h-12 w-12 text-orange-200" />
               </div>
@@ -272,11 +354,11 @@ const Index = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center p-2 bg-green-50 rounded">
                   <span className="font-medium">Tepat Waktu:</span>
-                  <span className="font-bold text-green-600">75%</span>
+                  <span className="font-bold text-green-600">10 orang</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-red-50 rounded">
                   <span className="font-medium">Terlambat:</span>
-                  <span className="font-bold text-red-600">25%</span>
+                  <span className="font-bold text-red-600">8 orang</span>
                 </div>
               </div>
             </CardContent>
@@ -288,7 +370,17 @@ const Index = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle className="text-xl text-gray-800">Presensi Mahasiswa</CardTitle>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
+                <Select value={selectedEmployeeType} onValueChange={setSelectedEmployeeType}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Pilih Tipe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Karyawan</SelectItem>
+                    <SelectItem value="permanent">Karyawan Tetap</SelectItem>
+                    <SelectItem value="intern">Karyawan Magang</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
@@ -299,14 +391,12 @@ const Index = () => {
                     <SelectItem value="monthly">Per Bulan</SelectItem>
                   </SelectContent>
                 </Select>
-                {selectedPeriod === 'daily' && (
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
+                <input
+                  type={selectedPeriod === 'daily' ? 'date' : selectedPeriod === 'weekly' ? 'week' : 'month'}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           </CardHeader>
