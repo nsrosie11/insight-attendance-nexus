@@ -27,7 +27,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, onLogout }) => 
                   : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
               }`}
             >
-              Info Pie Chart
+              Beranda
             </button>
             <button
               onClick={() => onTabChange('table')}
@@ -37,7 +37,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, onLogout }) => 
                   : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
               }`}
             >
-              Tabel Data
+              Tabel
             </button>
           </div>
           
@@ -47,7 +47,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, onLogout }) => 
             className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            Keluar
           </Button>
         </div>
       </div>

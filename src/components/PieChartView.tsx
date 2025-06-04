@@ -80,8 +80,7 @@ const PieChartView: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-800 mb-2">Info Pie Chart</h1>
-          <p className="text-blue-600">Visualisasi Data Kehadiran Karyawan</p>
+        
         </div>
         
         {/* Summary Cards */}
