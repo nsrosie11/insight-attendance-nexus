@@ -14,6 +14,10 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, onLogout }) => 
     <nav className="bg-white/90 backdrop-blur-sm border-b border-blue-200 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+          <div className="text-blue-700 font-medium">
+            Selamat datang, Admin
+          </div>
+          
           <div className="flex space-x-8">
             <button
               onClick={() => onTabChange('chart')}
@@ -36,6 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, onLogout }) => 
               Tabel Data
             </button>
           </div>
+          
           <Button
             onClick={onLogout}
             variant="outline"

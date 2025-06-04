@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +20,12 @@ interface Employee {
   totalHadir: number;
   totalTerlambat: number;
   totalTidakHadir: number;
+  detailKehadiran: Array<{
+    tanggal: string;
+    jamDatang: string;
+    jamPulang: string;
+    status: string;
+  }>;
 }
 
 const tableData: Employee[] = [
@@ -34,7 +39,14 @@ const tableData: Employee[] = [
     status: 'Hadir',
     totalHadir: 20,
     totalTerlambat: 3,
-    totalTidakHadir: 2
+    totalTidakHadir: 2,
+    detailKehadiran: [
+      { tanggal: '01-05-25', jamDatang: '08:15:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '02-05-25', jamDatang: '08:29:00', jamPulang: '16:12:00', status: 'Hadir' },
+      { tanggal: '03-05-25', jamDatang: '09:15:00', jamPulang: '16:05:00', status: 'Terlambat' },
+      { tanggal: '04-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+      { tanggal: '05-05-25', jamDatang: '08:05:00', jamPulang: '16:30:00', status: 'Hadir' },
+    ]
   },
   {
     id: 2,
@@ -46,7 +58,14 @@ const tableData: Employee[] = [
     status: 'Hadir',
     totalHadir: 22,
     totalTerlambat: 1,
-    totalTidakHadir: 2
+    totalTidakHadir: 2,
+    detailKehadiran: [
+      { tanggal: '01-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '02-05-25', jamDatang: '08:15:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '03-05-25', jamDatang: '08:10:00', jamPulang: '16:05:00', status: 'Hadir' },
+      { tanggal: '04-05-25', jamDatang: '09:05:00', jamPulang: '16:00:00', status: 'Terlambat' },
+      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+    ]
   },
   {
     id: 3,
@@ -58,7 +77,14 @@ const tableData: Employee[] = [
     status: 'Terlambat',
     totalHadir: 18,
     totalTerlambat: 5,
-    totalTidakHadir: 2
+    totalTidakHadir: 2,
+    detailKehadiran: [
+      { tanggal: '01-05-25', jamDatang: '08:30:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '02-05-25', jamDatang: '09:15:00', jamPulang: '16:05:00', status: 'Terlambat' },
+      { tanggal: '03-05-25', jamDatang: '09:00:00', jamPulang: '16:00:00', status: 'Terlambat' },
+      { tanggal: '04-05-25', jamDatang: '08:45:00', jamPulang: '16:10:00', status: 'Terlambat' },
+      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+    ]
   },
   {
     id: 4,
@@ -70,7 +96,14 @@ const tableData: Employee[] = [
     status: 'Tidak Hadir',
     totalHadir: 15,
     totalTerlambat: 2,
-    totalTidakHadir: 8
+    totalTidakHadir: 8,
+    detailKehadiran: [
+      { tanggal: '01-05-25', jamDatang: '08:20:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '02-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+      { tanggal: '03-05-25', jamDatang: '09:10:00', jamPulang: '16:00:00', status: 'Terlambat' },
+      { tanggal: '04-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+      { tanggal: '05-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
+    ]
   },
   {
     id: 5,
@@ -82,7 +115,14 @@ const tableData: Employee[] = [
     status: 'Hadir',
     totalHadir: 19,
     totalTerlambat: 4,
-    totalTidakHadir: 2
+    totalTidakHadir: 2,
+    detailKehadiran: [
+      { tanggal: '01-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
+      { tanggal: '02-05-25', jamDatang: '08:05:00', jamPulang: '16:30:00', status: 'Hadir' },
+      { tanggal: '03-05-25', jamDatang: '09:00:00', jamPulang: '16:00:00', status: 'Terlambat' },
+      { tanggal: '04-05-25', jamDatang: '08:45:00', jamPulang: '16:15:00', status: 'Terlambat' },
+      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
+    ]
   }
 ];
 
@@ -120,18 +160,18 @@ const TableView: React.FC = () => {
     if (!selectedEmployee) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <Card className="w-full max-w-md shadow-xl bg-white">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl bg-white">
           <CardHeader>
-            <CardTitle className="text-blue-800">Detail Karyawan</CardTitle>
+            <CardTitle className="text-blue-800">Detail Karyawan - {selectedEmployee.nama}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div>
               <h3 className="font-semibold text-blue-700">{selectedEmployee.nama}</h3>
               <p className="text-sm text-blue-600 capitalize">Tipe: {selectedEmployee.tipe}</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-green-50 p-3 rounded-lg">
                 <p className="text-sm text-green-600">Total Hadir</p>
                 <p className="text-2xl font-bold text-green-800">{selectedEmployee.totalHadir}</p>
@@ -140,17 +180,46 @@ const TableView: React.FC = () => {
                 <p className="text-sm text-yellow-600">Total Terlambat</p>
                 <p className="text-2xl font-bold text-yellow-800">{selectedEmployee.totalTerlambat}</p>
               </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-600">Total Tidak Hadir</p>
+                <p className="text-2xl font-bold text-red-800">{selectedEmployee.totalTidakHadir}</p>
+              </div>
             </div>
             
-            <div className="bg-red-50 p-3 rounded-lg">
-              <p className="text-sm text-red-600">Total Tidak Hadir</p>
-              <p className="text-2xl font-bold text-red-800">{selectedEmployee.totalTidakHadir}</p>
+            <div>
+              <h4 className="font-semibold text-blue-700 mb-3">Detail Kehadiran</h4>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-blue-50">
+                      <TableHead className="font-semibold text-blue-800">Tanggal</TableHead>
+                      <TableHead className="font-semibold text-blue-800">Jam Datang</TableHead>
+                      <TableHead className="font-semibold text-blue-800">Jam Pulang</TableHead>
+                      <TableHead className="font-semibold text-blue-800">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedEmployee.detailKehadiran.map((detail, index) => (
+                      <TableRow key={index} className="hover:bg-blue-50/50">
+                        <TableCell className="text-blue-700">{detail.tanggal}</TableCell>
+                        <TableCell className="text-blue-700">{detail.jamDatang}</TableCell>
+                        <TableCell className="text-blue-700">{detail.jamPulang}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(detail.status)}`}>
+                            {detail.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
             
-            <div className="flex space-x-2">
+            <div className="flex justify-end">
               <Button 
                 onClick={() => setShowDetail(false)}
-                className="flex-1 bg-blue-500 hover:bg-blue-600"
+                className="bg-blue-500 hover:bg-blue-600"
               >
                 Tutup
               </Button>
