@@ -9,56 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      karyawan: {
-        Row: {
-          id: string
-          nama: string
-          status: Database["public"]["Enums"]["employee_job_status"]
-        }
-        Insert: {
-          id?: string
-          nama: string
-          status: Database["public"]["Enums"]["employee_job_status"]
-        }
-        Update: {
-          id?: string
-          nama?: string
-          status?: Database["public"]["Enums"]["employee_job_status"]
-        }
-        Relationships: []
-      }
-      presensi: {
-        Row: {
-          id: string
-          "Jam Datang": string | null
-          "Jam Pulang": string | null
-          Nama: string
-          Tanggal: string
-        }
-        Insert: {
-          id?: string
-          "Jam Datang"?: string | null
-          "Jam Pulang"?: string | null
-          Nama: string
-          Tanggal: string
-        }
-        Update: {
-          id?: string
-          "Jam Datang"?: string | null
-          "Jam Pulang"?: string | null
-          Nama?: string
-          Tanggal?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "presensi_Nama_fkey"
-            columns: ["Nama"]
-            isOneToOne: false
-            referencedRelation: "karyawan"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
@@ -67,7 +18,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      employee_job_status: "karyawan" | "magang"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -182,8 +133,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      employee_job_status: ["karyawan", "magang"],
-    },
+    Enums: {},
   },
 } as const
