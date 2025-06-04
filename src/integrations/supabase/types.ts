@@ -29,36 +29,30 @@ export type Database = {
       }
       presensi: {
         Row: {
-          created_at: string
           id: string
-          jam_datang: string | null
-          jam_pulang: string | null
-          karyawan_id: string
-          tanggal: string
-          updated_at: string
+          "Jam Datang": string | null
+          "Jam Pulang": string | null
+          Nama: string
+          Tanggal: string
         }
         Insert: {
-          created_at?: string
           id?: string
-          jam_datang?: string | null
-          jam_pulang?: string | null
-          karyawan_id: string
-          tanggal: string
-          updated_at?: string
+          "Jam Datang"?: string | null
+          "Jam Pulang"?: string | null
+          Nama: string
+          Tanggal: string
         }
         Update: {
-          created_at?: string
           id?: string
-          jam_datang?: string | null
-          jam_pulang?: string | null
-          karyawan_id?: string
-          tanggal?: string
-          updated_at?: string
+          "Jam Datang"?: string | null
+          "Jam Pulang"?: string | null
+          Nama?: string
+          Tanggal?: string
         }
         Relationships: [
           {
-            foreignKeyName: "presensi_karyawan_id_fkey"
-            columns: ["karyawan_id"]
+            foreignKeyName: "presensi_Nama_fkey"
+            columns: ["Nama"]
             isOneToOne: false
             referencedRelation: "karyawan"
             referencedColumns: ["id"]
