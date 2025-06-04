@@ -9,7 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      absensi: {
+        Row: {
+          created_at: string | null
+          id: string
+          jam_masuk: string | null
+          jam_pulang: string | null
+          nama: string
+          pulang_tercatat: boolean | null
+          status: string
+          tanggal: string
+          terlambat: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          jam_masuk?: string | null
+          jam_pulang?: string | null
+          nama: string
+          pulang_tercatat?: boolean | null
+          status: string
+          tanggal: string
+          terlambat?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          jam_masuk?: string | null
+          jam_pulang?: string | null
+          nama?: string
+          pulang_tercatat?: boolean | null
+          status?: string
+          tanggal?: string
+          terlambat?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
