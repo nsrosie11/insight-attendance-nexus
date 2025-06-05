@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import PieChartView from '@/components/PieChartView';
 import TableView from '@/components/TableView';
+import ExcelUpload from '@/components/ExcelUpload';
 
 const queryClient = new QueryClient();
 
@@ -24,7 +26,12 @@ const Index = () => {
         />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {activeTab === 'chart' && <PieChartView />}
+          {activeTab === 'chart' && (
+            <div className="space-y-6">
+              <ExcelUpload />
+              <PieChartView />
+            </div>
+          )}
           {activeTab === 'table' && <TableView />}
         </main>
       </div>
