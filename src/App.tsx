@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Navbar from './components/Navbar';
 import PieChartView from './components/PieChartView';
 import TableView from './components/TableView';
+import ExcelUpload from './components/ExcelUpload';
 
 const queryClient = new QueryClient();
 
@@ -30,11 +31,29 @@ const App = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'chart':
-        return <PieChartView />;
+        return (
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="space-y-6">
+              <ExcelUpload />
+              <PieChartView />
+            </div>
+          </main>
+        );
       case 'table':
-        return <TableView />;
+        return (
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <TableView />
+          </main>
+        );
       default:
-        return <PieChartView />;
+        return (
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="space-y-6">
+              <ExcelUpload />
+              <PieChartView />
+            </div>
+          </main>
+        );
     }
   };
 
@@ -46,7 +65,7 @@ const App = () => {
         {!isLoggedIn ? (
           <Login onLogin={handleLogin} />
         ) : (
-          <div className="min-h-screen">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
             <Navbar 
               activeTab={activeTab}
               onTabChange={setActiveTab}
