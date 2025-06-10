@@ -24,6 +24,7 @@ const ExcelUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [parsedData, setParsedData] = useState<ExcelData[]>([]);
   const { toast } = useToast();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +34,7 @@ const ExcelUpload: React.FC = () => {
           selectedFile.name.endsWith('.xlsx')) {
         setFile(selectedFile);
         setUploadStatus('idle');
+        setParsedData([]); // Clear previous data
       } else {
         toast({
           title: "Format file tidak valid",
@@ -52,51 +54,61 @@ const ExcelUpload: React.FC = () => {
     const data = XLSX.utils.sheet_to_json(logSheet, { header: 1 }) as any[][];
     const parsedData: ExcelData[] = [];
 
+    console.log('Raw Excel data:', data);
+
     // Cari range kolom yang berisi data (mulai dari kolom 2, karena kolom 1 berisi tanggal)
     const range = XLSX.utils.decode_range(logSheet['!ref'] || 'A1:A1');
     
+    // Ambil tanggal dari kolom 1 (index 0) - cari di baris yang ada data tanggal
+    let tanggal: string | null = null;
+    for (let row = 0; row < data.length; row++) {
+      const tanggalCell = data[row] && data[row][0];
+      if (tanggalCell && tanggalCell !== '' && tanggalCell !== 'Tanggal') {
+        if (typeof tanggalCell === 'number') {
+          // Excel date serial number
+          const excelDate = new Date((tanggalCell - 25569) * 86400 * 1000);
+          tanggal = excelDate.toISOString().split('T')[0];
+        } else {
+          // String date
+          const dateObj = new Date(tanggalCell);
+          if (!isNaN(dateObj.getTime())) {
+            tanggal = dateObj.toISOString().split('T')[0];
+          }
+        }
+        break;
+      }
+    }
+
+    if (!tanggal) {
+      throw new Error('Tanggal tidak ditemukan dalam file Excel');
+    }
+
+    console.log('Found date:', tanggal);
+
     // Iterasi melalui setiap kolom mulai dari kolom 2 (index 1)
     for (let col = 1; col <= range.e.c; col++) {
       try {
+        // Ambil dept dari baris 3 (index 2)
+        const deptCell = data[2] && data[2][col];
+        if (!deptCell || deptCell.toString().trim() === '') continue;
+        
+        const dept = deptCell.toString().trim();
+        console.log(`Column ${col} - Dept:`, dept);
+        
         // Ambil nama dari baris 4 (index 3)
         const namaCell = data[3] && data[3][col];
         if (!namaCell || namaCell.toString().trim() === '') continue;
         
         const nama = namaCell.toString().trim();
-        
-        // Ambil dept dari baris 3 (index 2)
-        const deptCell = data[2] && data[2][col];
-        if (!deptCell) continue;
-        
-        const dept = deptCell.toString().trim();
+        console.log(`Column ${col} - Nama:`, nama);
         
         // Konversi dept ke status
         let status = 'Karyawan';
-        if (dept === 'RND') {
+        if (dept.toUpperCase() === 'RND') {
           status = 'Magang';
+        } else if (dept.toUpperCase() === 'OFFICE') {
+          status = 'Karyawan';
         }
-
-        // Ambil tanggal dari kolom 1 (index 0) - bisa dari baris mana saja yang ada data tanggal
-        let tanggal: string | null = null;
-        for (let row = 0; row < data.length; row++) {
-          const tanggalCell = data[row] && data[row][0];
-          if (tanggalCell && tanggalCell !== '' && tanggalCell !== 'Tanggal') {
-            if (typeof tanggalCell === 'number') {
-              // Excel date serial number
-              const excelDate = new Date((tanggalCell - 25569) * 86400 * 1000);
-              tanggal = excelDate.toISOString().split('T')[0];
-            } else {
-              // String date
-              const dateObj = new Date(tanggalCell);
-              if (!isNaN(dateObj.getTime())) {
-                tanggal = dateObj.toISOString().split('T')[0];
-              }
-            }
-            break;
-          }
-        }
-
-        if (!tanggal) continue;
 
         // Cari jam masuk dan jam pulang dalam kolom ini
         let jamMasuk: string | null = null;
@@ -108,6 +120,8 @@ const ExcelUpload: React.FC = () => {
           if (cell && typeof cell === 'string' && cell.includes('\n')) {
             // Sel berisi newline, split untuk ambil jam masuk dan pulang
             const lines = cell.split('\n').map(line => line.trim()).filter(line => line !== '');
+            console.log(`Column ${col} - Time lines:`, lines);
+            
             if (lines.length >= 1) {
               jamMasuk = parseTime(lines[0]);
             }
@@ -126,12 +140,14 @@ const ExcelUpload: React.FC = () => {
           }
         }
 
+        console.log(`Column ${col} - Jam masuk: ${jamMasuk}, Jam pulang: ${jamPulang}`);
+
         // Hitung status terlambat dan pulang_tercatat
         const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
         const pulang_tercatat = jamPulang ? 
           (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
 
-        parsedData.push({
+        const formattedData: ExcelData = {
           nama,
           status,
           tanggal,
@@ -139,7 +155,10 @@ const ExcelUpload: React.FC = () => {
           jam_pulang: jamPulang,
           terlambat,
           pulang_tercatat
-        });
+        };
+
+        console.log(`Formatted data for ${nama}:`, formattedData);
+        parsedData.push(formattedData);
 
       } catch (error) {
         console.log(`Error parsing column ${col}:`, error);
@@ -175,7 +194,7 @@ const ExcelUpload: React.FC = () => {
     return null;
   };
 
-  const handleUpload = async () => {
+  const handleParseFile = async () => {
     if (!file) return;
 
     setIsUploading(true);
@@ -187,14 +206,41 @@ const ExcelUpload: React.FC = () => {
       
       console.log('Available sheets:', workbook.SheetNames);
       
-      const parsedData = parseExcelData(workbook);
+      const parsed = parseExcelData(workbook);
       
-      console.log('Parsed data:', parsedData);
+      console.log('Final parsed data:', parsed);
       
-      if (parsedData.length === 0) {
+      if (parsed.length === 0) {
         throw new Error('Tidak ada data valid yang ditemukan dalam file');
       }
 
+      setParsedData(parsed);
+      setUploadStatus('success');
+      
+      toast({
+        title: "File berhasil diparse!",
+        description: `${parsed.length} data absensi siap untuk diimpor`,
+      });
+
+    } catch (error: any) {
+      console.error('Error parsing file:', error);
+      setUploadStatus('error');
+      toast({
+        title: "Parse gagal",
+        description: error.message || "Terjadi kesalahan saat memparse file",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSaveToDatabase = async () => {
+    if (parsedData.length === 0) return;
+
+    setIsUploading(true);
+
+    try {
       // Insert data ke Supabase
       const { data, error } = await supabase
         .from('absensi')
@@ -204,23 +250,23 @@ const ExcelUpload: React.FC = () => {
         throw error;
       }
 
-      setUploadStatus('success');
       toast({
-        title: "Upload berhasil!",
-        description: `${parsedData.length} data absensi berhasil diimpor ke database`,
+        title: "Data berhasil disimpan!",
+        description: `${parsedData.length} data absensi berhasil disimpan ke database`,
       });
 
       // Reset form
       setFile(null);
+      setParsedData([]);
+      setUploadStatus('idle');
       const fileInput = document.getElementById('excel-file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
     } catch (error: any) {
-      console.error('Error uploading file:', error);
-      setUploadStatus('error');
+      console.error('Error saving to database:', error);
       toast({
-        title: "Upload gagal",
-        description: error.message || "Terjadi kesalahan saat mengupload file",
+        title: "Gagal menyimpan",
+        description: error.message || "Terjadi kesalahan saat menyimpan ke database",
         variant: "destructive"
       });
     } finally {
@@ -263,11 +309,21 @@ const ExcelUpload: React.FC = () => {
           </Alert>
         )}
 
-        {uploadStatus === 'success' && (
+        {parsedData.length > 0 && (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
-              Data berhasil diupload ke database!
+              <strong>{parsedData.length} data berhasil diparse:</strong>
+              <div className="mt-2 max-h-40 overflow-y-auto text-xs">
+                {parsedData.slice(0, 5).map((item, index) => (
+                  <div key={index} className="mb-1">
+                    {item.nama} ({item.status}) - {item.tanggal} | 
+                    Masuk: {item.jam_masuk || 'N/A'} | 
+                    Pulang: {item.jam_pulang || 'N/A'}
+                  </div>
+                ))}
+                {parsedData.length > 5 && <div>...dan {parsedData.length - 5} lainnya</div>}
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -276,28 +332,50 @@ const ExcelUpload: React.FC = () => {
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800">
-              Gagal mengupload data. Silakan coba lagi.
+              Gagal memparse data. Silakan coba lagi.
             </AlertDescription>
           </Alert>
         )}
 
-        <Button
-          onClick={handleUpload}
-          disabled={!file || isUploading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isUploading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Mengupload...
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Data Absensi
-            </>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleParseFile}
+            disabled={!file || isUploading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isUploading && parsedData.length === 0 ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Memparse File...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Parse File Excel
+              </>
+            )}
+          </Button>
+
+          {parsedData.length > 0 && (
+            <Button
+              onClick={handleSaveToDatabase}
+              disabled={isUploading}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isUploading && parsedData.length > 0 ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Simpan ke Database
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
 
         <div className="text-xs text-gray-500 space-y-1">
           <p><strong>Format Excel yang dibutuhkan:</strong></p>
