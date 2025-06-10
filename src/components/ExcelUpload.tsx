@@ -56,51 +56,20 @@ const ExcelUpload: React.FC = () => {
 
     console.log('Raw Excel data:', data);
 
-    // Cari range kolom yang berisi data (mulai dari kolom 2, karena kolom 1 berisi tanggal)
+    // Cari range kolom yang berisi data
     const range = XLSX.utils.decode_range(logSheet['!ref'] || 'A1:A1');
     
-    // Ambil tanggal dari kolom 1 (index 0) - cari di baris yang ada data tanggal
-    let tanggal: string | null = null;
+    // Ambil data karyawan dari kolom A (index 0)
+    const karyawanData: Array<{nama: string, dept: string, rowIndex: number}> = [];
+    
+    // Iterasi untuk mencari nama dan dept karyawan di kolom A
     for (let row = 0; row < data.length; row++) {
-      const tanggalCell = data[row] && data[row][0];
-      if (tanggalCell && tanggalCell !== '' && tanggalCell !== 'Tanggal') {
-        if (typeof tanggalCell === 'number') {
-          // Excel date serial number
-          const excelDate = new Date((tanggalCell - 25569) * 86400 * 1000);
-          tanggal = excelDate.toISOString().split('T')[0];
-        } else {
-          // String date
-          const dateObj = new Date(tanggalCell);
-          if (!isNaN(dateObj.getTime())) {
-            tanggal = dateObj.toISOString().split('T')[0];
-          }
-        }
-        break;
-      }
-    }
-
-    if (!tanggal) {
-      throw new Error('Tanggal tidak ditemukan dalam file Excel');
-    }
-
-    console.log('Found date:', tanggal);
-
-    // Iterasi melalui setiap kolom mulai dari kolom 2 (index 1)
-    for (let col = 1; col <= range.e.c; col++) {
-      try {
-        // Ambil dept dari baris 3 (index 2)
-        const deptCell = data[2] && data[2][col];
-        if (!deptCell || deptCell.toString().trim() === '') continue;
-        
+      const deptCell = data[2] && data[2][0]; // Baris 3 (index 2), kolom A untuk dept
+      const namaCell = data[3] && data[3][0]; // Baris 4 (index 3), kolom A untuk nama
+      
+      if (deptCell && namaCell) {
         const dept = deptCell.toString().trim();
-        console.log(`Column ${col} - Dept:`, dept);
-        
-        // Ambil nama dari baris 4 (index 3)
-        const namaCell = data[3] && data[3][col];
-        if (!namaCell || namaCell.toString().trim() === '') continue;
-        
         const nama = namaCell.toString().trim();
-        console.log(`Column ${col} - Nama:`, nama);
         
         // Konversi dept ke status
         let status = 'Karyawan';
@@ -109,56 +78,114 @@ const ExcelUpload: React.FC = () => {
         } else if (dept.toUpperCase() === 'OFFICE') {
           status = 'Karyawan';
         }
+        
+        karyawanData.push({ nama, dept: status, rowIndex: row });
+        break; // Ambil data karyawan pertama saja untuk struktur ini
+      }
+    }
 
-        // Cari jam masuk dan jam pulang dalam kolom ini
-        let jamMasuk: string | null = null;
-        let jamPulang: string | null = null;
+    if (karyawanData.length === 0) {
+      throw new Error('Data karyawan tidak ditemukan di kolom A');
+    }
 
-        // Cari sel yang berisi jam (biasanya setelah nama dan dept)
-        for (let row = 4; row < data.length; row++) {
-          const cell = data[row] && data[row][col];
-          if (cell && typeof cell === 'string' && cell.includes('\n')) {
-            // Sel berisi newline, split untuk ambil jam masuk dan pulang
-            const lines = cell.split('\n').map(line => line.trim()).filter(line => line !== '');
-            console.log(`Column ${col} - Time lines:`, lines);
-            
-            if (lines.length >= 1) {
-              jamMasuk = parseTime(lines[0]);
+    console.log('Found employee data:', karyawanData);
+
+    // Iterasi melalui setiap kolom mulai dari kolom B (index 1) untuk mengambil tanggal dan jam
+    for (let col = 1; col <= range.e.c; col++) {
+      try {
+        // Ambil tanggal dari baris 5 (index 4)
+        const tanggalCell = data[4] && data[4][col];
+        if (!tanggalCell || tanggalCell.toString().trim() === '') continue;
+        
+        let tanggal: string;
+        if (typeof tanggalCell === 'number') {
+          // Excel date serial number
+          const excelDate = new Date((tanggalCell - 25569) * 86400 * 1000);
+          tanggal = excelDate.toISOString().split('T')[0];
+        } else {
+          // String date - parse various formats
+          const dateStr = tanggalCell.toString().trim();
+          let dateObj: Date;
+          
+          // Try MM/DD format first
+          if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length >= 2) {
+              const month = parseInt(parts[0]);
+              const day = parseInt(parts[1]);
+              const year = new Date().getFullYear(); // Use current year
+              dateObj = new Date(year, month - 1, day);
+            } else {
+              dateObj = new Date(dateStr);
             }
-            if (lines.length >= 2) {
-              jamPulang = parseTime(lines[1]);
-            }
-            break;
-          } else if (cell && typeof cell === 'string') {
-            // Coba parse sebagai jam tunggal
-            const parsedTime = parseTime(cell);
-            if (parsedTime && !jamMasuk) {
-              jamMasuk = parsedTime;
-            } else if (parsedTime && jamMasuk && !jamPulang) {
-              jamPulang = parsedTime;
-            }
+          } else {
+            dateObj = new Date(dateStr);
           }
+          
+          if (isNaN(dateObj.getTime())) {
+            console.log(`Invalid date in column ${col}:`, dateStr);
+            continue;
+          }
+          tanggal = dateObj.toISOString().split('T')[0];
         }
 
-        console.log(`Column ${col} - Jam masuk: ${jamMasuk}, Jam pulang: ${jamPulang}`);
+        console.log(`Column ${col} - Date:`, tanggal);
 
-        // Hitung status terlambat dan pulang_tercatat
-        const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
-        const pulang_tercatat = jamPulang ? 
-          (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
+        // Untuk setiap karyawan, cari jam masuk dan pulang di kolom ini
+        for (const karyawan of karyawanData) {
+          // Cari sel yang berisi jam masuk dan pulang untuk karyawan ini
+          let jamMasuk: string | null = null;
+          let jamPulang: string | null = null;
 
-        const formattedData: ExcelData = {
-          nama,
-          status,
-          tanggal,
-          jam_masuk: jamMasuk,
-          jam_pulang: jamPulang,
-          terlambat,
-          pulang_tercatat
-        };
+          // Cari di baris 6 ke bawah (index 5+) untuk jam absen
+          for (let row = 5; row < data.length; row++) {
+            const cell = data[row] && data[row][col];
+            if (cell && cell.toString().trim() !== '') {
+              const cellValue = cell.toString().trim();
+              
+              // Cek apakah sel berisi jam (dengan newline)
+              if (cellValue.includes('\n')) {
+                const lines = cellValue.split('\n').map(line => line.trim()).filter(line => line !== '');
+                console.log(`Column ${col}, Row ${row} - Time lines:`, lines);
+                
+                if (lines.length >= 1) {
+                  jamMasuk = parseTime(lines[0]);
+                }
+                if (lines.length >= 2) {
+                  jamPulang = parseTime(lines[1]);
+                }
+                break;
+              } else {
+                // Coba parse sebagai jam tunggal
+                const parsedTime = parseTime(cellValue);
+                if (parsedTime) {
+                  jamMasuk = parsedTime;
+                  break;
+                }
+              }
+            }
+          }
 
-        console.log(`Formatted data for ${nama}:`, formattedData);
-        parsedData.push(formattedData);
+          console.log(`Column ${col} - ${karyawan.nama} - Jam masuk: ${jamMasuk}, Jam pulang: ${jamPulang}`);
+
+          // Hitung status terlambat dan pulang_tercatat
+          const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
+          const pulang_tercatat = jamPulang ? 
+            (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
+
+          const formattedData: ExcelData = {
+            nama: karyawan.nama,
+            status: karyawan.dept,
+            tanggal,
+            jam_masuk: jamMasuk,
+            jam_pulang: jamPulang,
+            terlambat,
+            pulang_tercatat
+          };
+
+          console.log(`Formatted data for ${karyawan.nama} on ${tanggal}:`, formattedData);
+          parsedData.push(formattedData);
+        }
 
       } catch (error) {
         console.log(`Error parsing column ${col}:`, error);
@@ -381,10 +408,10 @@ const ExcelUpload: React.FC = () => {
           <p><strong>Format Excel yang dibutuhkan:</strong></p>
           <ul className="list-disc pl-4 space-y-1">
             <li>Sheet bernama "Log"</li>
-            <li>Setiap kolom berisi 1 orang</li>
-            <li>Nama di baris 4, Dept di baris 3</li>
-            <li>Tanggal di kolom 1</li>
-            <li>Jam masuk dan pulang dalam 1 sel (dipisah newline)</li>
+            <li>Baris 3: Dept di kolom A</li>
+            <li>Baris 4: Nama karyawan di kolom A</li>
+            <li>Baris 5: Tanggal di setiap kolom (B, C, D, dst)</li>
+            <li>Baris 6+: Jam masuk dan pulang (dipisah newline)</li>
             <li>Dept: "RND" = Magang, "Office" = Karyawan</li>
           </ul>
         </div>
