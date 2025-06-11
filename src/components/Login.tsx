@@ -99,12 +99,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
-          
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-            <p className="font-medium">Demo Accounts:</p>
-            <p>Admin: neilaadeninsyafitri@gmail.com / 123456</p>
-            <p>User: Daftar akun baru untuk role user</p>
-          </div>
         </CardContent>
       </Card>
     </div>
