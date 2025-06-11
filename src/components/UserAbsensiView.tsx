@@ -1,13 +1,19 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, User, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, User, AlertCircle, CheckCircle, XCircle, CalendarIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const UserAbsensiView: React.FC = () => {
   const [user, setUser] = React.useState(null);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
 
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -38,7 +44,7 @@ const UserAbsensiView: React.FC = () => {
   const stats = React.useMemo(() => {
     if (!absensiData) return { hadir: 0, terlambat: 0, tidakHadir: 0 };
     
-    const hadir = absensiData.filter(item => item.jam_masuk).length;
+    const hadir = absensiData.filter(item => item.jam_masuk && !item.terlambat).length;
     const terlambat = absensiData.filter(item => item.terlambat).length;
     const tidakHadir = absensiData.filter(item => !item.jam_masuk).length;
     
@@ -55,6 +61,35 @@ const UserAbsensiView: React.FC = () => {
     if (!item.jam_masuk) return 'Tidak Hadir';
     if (item.terlambat) return 'Terlambat';
     return 'Hadir';
+  };
+
+  // Function to get attendance data for a specific date
+  const getAttendanceForDate = (date: Date) => {
+    if (!absensiData) return null;
+    const dateString = date.toISOString().split('T')[0];
+    return absensiData.find(item => item.tanggal === dateString);
+  };
+
+  // Custom day content for calendar
+  const dayContent = (day: Date) => {
+    const attendance = getAttendanceForDate(day);
+    if (!attendance) return day.getDate();
+    
+    return (
+      <div className="relative w-full h-full flex items-center justify-center">
+        <span className="text-white font-medium">{day.getDate()}</span>
+      </div>
+    );
+  };
+
+  // Custom day class names
+  const getDayClassName = (day: Date) => {
+    const attendance = getAttendanceForDate(day);
+    if (!attendance) return '';
+    
+    if (!attendance.jam_masuk) return 'bg-gray-800 text-white hover:bg-gray-700';
+    if (attendance.terlambat) return 'bg-red-500 text-white hover:bg-red-600';
+    return 'bg-blue-500 text-white hover:bg-blue-600';
   };
 
   if (isLoading) {
@@ -108,7 +143,7 @@ const UserAbsensiView: React.FC = () => {
         </Card>
       </div>
 
-      {/* Kalender Visual */}
+      {/* Kalender Kehadiran */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -116,22 +151,40 @@ const UserAbsensiView: React.FC = () => {
             Kalender Kehadiran
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2 mb-4">
-            {absensiData?.slice(0, 21).map((item, index) => (
-              <div
-                key={index}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium ${getStatusColor(item)}`}
-                title={`${item.tanggal} - ${getStatusText(item)}`}
-              >
-                {new Date(item.tanggal).getDate()}
-              </div>
-            ))}
+        <CardContent className="space-y-4">
+          <div className="flex justify-center">
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border"
+              modifiers={{
+                attendance: (date) => !!getAttendanceForDate(date),
+                present: (date) => {
+                  const attendance = getAttendanceForDate(date);
+                  return attendance && attendance.jam_masuk && !attendance.terlambat;
+                },
+                late: (date) => {
+                  const attendance = getAttendanceForDate(date);
+                  return attendance && attendance.terlambat;
+                },
+                absent: (date) => {
+                  const attendance = getAttendanceForDate(date);
+                  return attendance && !attendance.jam_masuk;
+                },
+              }}
+              modifiersClassNames={{
+                present: 'bg-blue-500 text-white hover:bg-blue-600',
+                late: 'bg-red-500 text-white hover:bg-red-600',
+                absent: 'bg-gray-800 text-white hover:bg-gray-700',
+              }}
+            />
           </div>
-          <div className="flex flex-wrap gap-4 text-sm">
+          
+          <div className="flex flex-wrap gap-4 text-sm justify-center">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span>Hadir</span>
+              <span>Hadir Tepat Waktu</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-500 rounded-full"></div>
@@ -142,6 +195,24 @@ const UserAbsensiView: React.FC = () => {
               <span>Tidak Hadir</span>
             </div>
           </div>
+
+          {selectedDate && getAttendanceForDate(selectedDate) && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-800 mb-2">
+                Detail {format(selectedDate, 'dd MMMM yyyy')}
+              </h4>
+              {(() => {
+                const attendance = getAttendanceForDate(selectedDate);
+                return (
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Jam Masuk:</span> {attendance?.jam_masuk || '-'}</p>
+                    <p><span className="font-medium">Jam Pulang:</span> {attendance?.jam_pulang || '-'}</p>
+                    <p><span className="font-medium">Status:</span> {getStatusText(attendance)}</p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </CardContent>
       </Card>
 

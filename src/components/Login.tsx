@@ -3,18 +3,53 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: () => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(email, password);
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login Gagal",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Login Berhasil",
+        description: "Selamat datang!",
+      });
+      
+      onLogin();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat login",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -59,10 +94,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Button 
               type="submit" 
               className="w-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all duration-200 transform hover:scale-105"
+              disabled={isLoading}
             >
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+            <p className="font-medium">Demo Accounts:</p>
+            <p>Admin: neilaadeninsyafitri@gmail.com / 123456</p>
+            <p>User: Daftar akun baru untuk role user</p>
+          </div>
         </CardContent>
       </Card>
     </div>

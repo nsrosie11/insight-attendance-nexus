@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { supabase } from '@/integrations/supabase/client';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import PieChartView from './components/PieChartView';
@@ -18,7 +19,27 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('');
+  const [user, setUser] = useState(null);
   const { data: userRole, isLoading } = useUserRole();
+
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoggedIn(!!session);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoggedIn(!!session);
+      if (!session) {
+        setActiveTab('');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   React.useEffect(() => {
     // Set default tab based on user role
@@ -29,14 +50,13 @@ const AppContent = () => {
     }
   }, [userRole, activeTab]);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple validation - in real app, you'd validate against backend
-    if (email && password) {
-      setIsLoggedIn(true);
-    }
+  const handleLogin = () => {
+    // Login is handled by Supabase auth now
+    console.log('Login successful');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsLoggedIn(false);
     setActiveTab('');
   };
