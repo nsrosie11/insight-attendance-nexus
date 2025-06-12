@@ -12,18 +12,16 @@ export const useUserRole = () => {
         return null;
       }
 
+      // Use the security definer function to avoid RLS recursion
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .rpc('get_user_role', { user_uuid: user.id });
 
       if (error) {
         console.error('Error fetching user role:', error);
         return 'user'; // default to user role
       }
 
-      return data?.role || 'user';
+      return data || 'user';
     },
     enabled: true,
   });
