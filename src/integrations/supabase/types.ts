@@ -9,65 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      karyawan: {
+      absensi: {
         Row: {
+          created_at: string | null
           id: string
+          jam_masuk: string | null
+          jam_pulang: string | null
           nama: string
-          status: Database["public"]["Enums"]["employee_job_status"]
+          pulang_tercatat: boolean | null
+          status: string
+          tanggal: string
+          terlambat: boolean | null
+          updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
+          jam_masuk?: string | null
+          jam_pulang?: string | null
           nama: string
-          status: Database["public"]["Enums"]["employee_job_status"]
+          pulang_tercatat?: boolean | null
+          status: string
+          tanggal: string
+          terlambat?: boolean | null
+          updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
+          jam_masuk?: string | null
+          jam_pulang?: string | null
           nama?: string
-          status?: Database["public"]["Enums"]["employee_job_status"]
+          pulang_tercatat?: boolean | null
+          status?: string
+          tanggal?: string
+          terlambat?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
-      presensi: {
+      user_roles: {
         Row: {
+          created_at: string | null
           id: string
-          "Jam Datang": string | null
-          "Jam Pulang": string | null
-          Nama: string
-          Tanggal: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
-          "Jam Datang"?: string | null
-          "Jam Pulang"?: string | null
-          Nama: string
-          Tanggal: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id: string
         }
         Update: {
+          created_at?: string | null
           id?: string
-          "Jam Datang"?: string | null
-          "Jam Pulang"?: string | null
-          Nama?: string
-          Tanggal?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "presensi_Nama_fkey"
-            columns: ["Nama"]
-            isOneToOne: false
-            referencedRelation: "karyawan"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
     }
     Enums: {
-      employee_job_status: "karyawan" | "magang"
+      user_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -183,7 +196,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      employee_job_status: ["karyawan", "magang"],
+      user_role: ["admin", "user"],
     },
   },
 } as const

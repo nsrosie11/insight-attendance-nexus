@@ -1,357 +1,217 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Eye } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-
-interface Employee {
-  id: number;
-  nama: string;
-  tipe: 'tetap' | 'magang';
-  tanggal: string;
-  jamDatang: string;
-  jamPulang: string;
-  status: string;
-  totalHadir: number;
-  totalTerlambat: number;
-  totalTidakHadir: number;
-  detailKehadiran: Array<{
-    tanggal: string;
-    jamDatang: string;
-    jamPulang: string;
-    status: string;
-  }>;
-}
-
-const tableData: Employee[] = [
-  {
-    id: 1,
-    nama: 'Ahmad Rahman',
-    tipe: 'tetap',
-    tanggal: '02-05-25',
-    jamDatang: '08:29:00',
-    jamPulang: '16:12:00',
-    status: 'Hadir',
-    totalHadir: 20,
-    totalTerlambat: 3,
-    totalTidakHadir: 2,
-    detailKehadiran: [
-      { tanggal: '01-05-25', jamDatang: '08:15:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '02-05-25', jamDatang: '08:29:00', jamPulang: '16:12:00', status: 'Hadir' },
-      { tanggal: '03-05-25', jamDatang: '09:15:00', jamPulang: '16:05:00', status: 'Terlambat' },
-      { tanggal: '04-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-      { tanggal: '05-05-25', jamDatang: '08:05:00', jamPulang: '16:30:00', status: 'Hadir' },
-    ]
-  },
-  {
-    id: 2,
-    nama: 'Siti Nurhaliza',
-    tipe: 'tetap',
-    tanggal: '02-05-25',
-    jamDatang: '08:15:00',
-    jamPulang: '16:00:00',
-    status: 'Hadir',
-    totalHadir: 22,
-    totalTerlambat: 1,
-    totalTidakHadir: 2,
-    detailKehadiran: [
-      { tanggal: '01-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '02-05-25', jamDatang: '08:15:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '03-05-25', jamDatang: '08:10:00', jamPulang: '16:05:00', status: 'Hadir' },
-      { tanggal: '04-05-25', jamDatang: '09:05:00', jamPulang: '16:00:00', status: 'Terlambat' },
-      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-    ]
-  },
-  {
-    id: 3,
-    nama: 'Budi Santoso',
-    tipe: 'magang',
-    tanggal: '02-05-25',
-    jamDatang: '09:15:00',
-    jamPulang: '16:05:00',
-    status: 'Terlambat',
-    totalHadir: 18,
-    totalTerlambat: 5,
-    totalTidakHadir: 2,
-    detailKehadiran: [
-      { tanggal: '01-05-25', jamDatang: '08:30:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '02-05-25', jamDatang: '09:15:00', jamPulang: '16:05:00', status: 'Terlambat' },
-      { tanggal: '03-05-25', jamDatang: '09:00:00', jamPulang: '16:00:00', status: 'Terlambat' },
-      { tanggal: '04-05-25', jamDatang: '08:45:00', jamPulang: '16:10:00', status: 'Terlambat' },
-      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-    ]
-  },
-  {
-    id: 4,
-    nama: 'Maya Sari',
-    tipe: 'tetap',
-    tanggal: '02-05-25',
-    jamDatang: '-',
-    jamPulang: '-',
-    status: 'Tidak Hadir',
-    totalHadir: 15,
-    totalTerlambat: 2,
-    totalTidakHadir: 8,
-    detailKehadiran: [
-      { tanggal: '01-05-25', jamDatang: '08:20:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '02-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-      { tanggal: '03-05-25', jamDatang: '09:10:00', jamPulang: '16:00:00', status: 'Terlambat' },
-      { tanggal: '04-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-      { tanggal: '05-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
-    ]
-  },
-  {
-    id: 5,
-    nama: 'Dian Pratama',
-    tipe: 'magang',
-    tanggal: '02-05-25',
-    jamDatang: '08:05:00',
-    jamPulang: '16:30:00',
-    status: 'Hadir',
-    totalHadir: 19,
-    totalTerlambat: 4,
-    totalTidakHadir: 2,
-    detailKehadiran: [
-      { tanggal: '01-05-25', jamDatang: '08:00:00', jamPulang: '16:00:00', status: 'Hadir' },
-      { tanggal: '02-05-25', jamDatang: '08:05:00', jamPulang: '16:30:00', status: 'Hadir' },
-      { tanggal: '03-05-25', jamDatang: '09:00:00', jamPulang: '16:00:00', status: 'Terlambat' },
-      { tanggal: '04-05-25', jamDatang: '08:45:00', jamPulang: '16:15:00', status: 'Terlambat' },
-      { tanggal: '05-05-25', jamDatang: '-', jamPulang: '-', status: 'Tidak Hadir' },
-    ]
-  }
-];
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Eye, Clock, Calendar, User, Building } from 'lucide-react';
+import { useAbsensi, type AbsensiData } from '@/hooks/useAbsensi';
 
 const TableView: React.FC = () => {
-  const [employeeFilter, setEmployeeFilter] = useState<string>('semua');
-  const [periodFilter, setPeriodFilter] = useState<string>('hari');
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
+  const { data: absensiData, isLoading, error } = useAbsensi();
+  const [selectedEmployee, setSelectedEmployee] = useState<AbsensiData | null>(null);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Hadir':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Terlambat':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Tidak Hadir':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const filteredData = tableData.filter(employee => {
-    if (employeeFilter === 'semua') return true;
-    return employee.tipe === employeeFilter;
-  });
-
-  const handleShowDetail = (employee: Employee) => {
-    setSelectedEmployee(employee);
-    setShowDetail(true);
-  };
-
-  const DetailModal = () => {
-    if (!selectedEmployee) return null;
-
+  if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl bg-white">
-          <CardHeader>
-            <CardTitle className="text-blue-800">Detail Karyawan - {selectedEmployee.nama}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <h3 className="font-semibold text-blue-700">{selectedEmployee.nama}</h3>
-              <p className="text-sm text-blue-600 capitalize">Tipe: {selectedEmployee.tipe}</p>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-green-50 p-3 rounded-lg">
-                <p className="text-sm text-green-600">Total Hadir</p>
-                <p className="text-2xl font-bold text-green-800">{selectedEmployee.totalHadir}</p>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <p className="text-sm text-yellow-600">Total Terlambat</p>
-                <p className="text-2xl font-bold text-yellow-800">{selectedEmployee.totalTerlambat}</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg">
-                <p className="text-sm text-red-600">Total Tidak Hadir</p>
-                <p className="text-2xl font-bold text-red-800">{selectedEmployee.totalTidakHadir}</p>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold text-blue-700 mb-3">Detail Kehadiran</h4>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-blue-50">
-                      <TableHead className="font-semibold text-blue-800">Tanggal</TableHead>
-                      <TableHead className="font-semibold text-blue-800">Jam Datang</TableHead>
-                      <TableHead className="font-semibold text-blue-800">Jam Pulang</TableHead>
-                      <TableHead className="font-semibold text-blue-800">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedEmployee.detailKehadiran.map((detail, index) => (
-                      <TableRow key={index} className="hover:bg-blue-50/50">
-                        <TableCell className="text-blue-700">{detail.tanggal}</TableCell>
-                        <TableCell className="text-blue-700">{detail.jamDatang}</TableCell>
-                        <TableCell className="text-blue-700">{detail.jamPulang}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(detail.status)}`}>
-                            {detail.status}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-            
-            <div className="flex justify-end">
-              <Button 
-                onClick={() => setShowDetail(false)}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                Tutup
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-blue-600">Loading data absensi...</div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-600">Error loading data: {error.message}</div>
+      </div>
+    );
+  }
+
+  const formatTime = (time: string | null) => {
+    if (!time) return '-';
+    return time;
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    return status === 'Karyawan' ? (
+      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+        <Building className="w-3 h-3 mr-1" />
+        Karyawan
+      </Badge>
+    ) : (
+      <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">
+        <User className="w-3 h-3 mr-1" />
+        Magang
+      </Badge>
     );
   };
 
+  const getAttendanceStatus = (jamMasuk: string | null, jamPulang: string | null) => {
+    if (!jamMasuk && !jamPulang) return 'Tidak Hadir';
+    if (jamMasuk && !jamPulang) return 'Belum Pulang';
+    if (jamMasuk && jamPulang) return 'Hadir Lengkap';
+    return 'Status Tidak Dikenal';
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        <Card className="shadow-xl bg-white/80 backdrop-blur-sm border-blue-200">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
-              Tabel Data
-            </CardTitle>
-            <p className="text-blue-600">Data Presensi Karyawan</p>
-          </CardHeader>
-          <CardContent>
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 mb-6">
-              <div className="flex items-center space-x-2">
-                <label className="text-blue-700 font-medium">Tipe Karyawan:</label>
-                <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-                  <SelectTrigger className="w-40 border-blue-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="semua">Semua</SelectItem>
-                    <SelectItem value="tetap">Karyawan Tetap</SelectItem>
-                    <SelectItem value="magang">Karyawan Magang</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+    <div className="space-y-6">
+      <Card className="bg-white/90 backdrop-blur-sm border-blue-200 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-blue-800 flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Data Absensi Karyawan
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-blue-50">
+                  <TableHead className="text-blue-800 font-semibold">No</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Nama</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Status</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Tanggal</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Jam Masuk</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Jam Pulang</TableHead>
+                  <TableHead className="text-blue-800 font-semibold">Keterangan</TableHead>
+                  <TableHead className="text-blue-800 font-semibold text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {absensiData?.map((item, index) => (
+                  <TableRow key={item.id} className="hover:bg-blue-50 transition-colors">
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell className="font-medium text-blue-900">{item.nama}</TableCell>
+                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    <TableCell>{formatDate(item.tanggal)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        {formatTime(item.jam_masuk)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-green-600" />
+                        {formatTime(item.jam_pulang)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          {getAttendanceStatus(item.jam_masuk, item.jam_pulang)}
+                        </div>
+                        {item.terlambat && (
+                          <Badge variant="destructive" className="text-xs">
+                            Terlambat
+                          </Badge>
+                        )}
+                        {item.pulang_tercatat && (
+                          <Badge className="bg-green-100 text-green-800 text-xs">
+                            Pulang Tepat Waktu
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                            onClick={() => setSelectedEmployee(item)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-blue-800">Detail Absensi</DialogTitle>
+                          </DialogHeader>
+                          {selectedEmployee && (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-600">Nama:</label>
+                                  <p className="text-blue-900 font-semibold">{selectedEmployee.nama}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-600">Status:</label>
+                                  <div className="mt-1">{getStatusBadge(selectedEmployee.status)}</div>
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <label className="text-sm font-medium text-gray-600">Tanggal:</label>
+                                <p className="text-gray-900">{formatDate(selectedEmployee.tanggal)}</p>
+                              </div>
 
-              <div className="flex items-center space-x-2">
-                <label className="text-blue-700 font-medium">Periode:</label>
-                <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                  <SelectTrigger className="w-32 border-blue-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hari">Per Hari</SelectItem>
-                    <SelectItem value="minggu">Per Minggu</SelectItem>
-                    <SelectItem value="bulan">Per Bulan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-600">Jam Masuk:</label>
+                                  <p className="text-blue-900 font-mono text-lg">
+                                    {formatTime(selectedEmployee.jam_masuk)}
+                                  </p>
+                                  {selectedEmployee.terlambat && (
+                                    <Badge variant="destructive" className="text-xs mt-1">
+                                      Terlambat
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-600">Jam Pulang:</label>
+                                  <p className="text-green-900 font-mono text-lg">
+                                    {formatTime(selectedEmployee.jam_pulang)}
+                                  </p>
+                                  {selectedEmployee.pulang_tercatat && (
+                                    <Badge className="bg-green-100 text-green-800 text-xs mt-1">
+                                      Pulang Tepat Waktu
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
 
-              <div className="flex items-center space-x-2">
-                <label className="text-blue-700 font-medium">Tanggal:</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-48 justify-start text-left font-normal border-blue-200",
-                        !selectedDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, "PPP") : <span>Pilih tanggal</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-blue-50">
-                    <TableHead className="font-semibold text-blue-800">No</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Nama Karyawan</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Tipe</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Tanggal</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Jam Datang</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Jam Pulang</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Status</TableHead>
-                    <TableHead className="font-semibold text-blue-800">Aksi</TableHead>
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <h4 className="font-medium text-blue-800 mb-2">Ringkasan Kehadiran</h4>
+                                <p className="text-sm text-blue-700">
+                                  Status: {getAttendanceStatus(selectedEmployee.jam_masuk, selectedEmployee.jam_pulang)}
+                                </p>
+                                {selectedEmployee.jam_masuk && selectedEmployee.jam_pulang && (
+                                  <p className="text-sm text-blue-700 mt-1">
+                                    Durasi kerja: {(() => {
+                                      const masuk = new Date(`2025-01-01 ${selectedEmployee.jam_masuk}`);
+                                      const pulang = new Date(`2025-01-01 ${selectedEmployee.jam_pulang}`);
+                                      const diff = pulang.getTime() - masuk.getTime();
+                                      const hours = Math.floor(diff / (1000 * 60 * 60));
+                                      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                      return `${hours} jam ${minutes} menit`;
+                                    })()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.map((row) => (
-                    <TableRow 
-                      key={row.id}
-                      className="hover:bg-blue-50/50 transition-colors duration-200"
-                    >
-                      <TableCell className="font-medium text-blue-700">{row.id}</TableCell>
-                      <TableCell className="text-blue-800">{row.nama}</TableCell>
-                      <TableCell className="text-blue-700 capitalize">{row.tipe}</TableCell>
-                      <TableCell className="text-blue-700">{row.tanggal}</TableCell>
-                      <TableCell className="text-blue-700">{row.jamDatang}</TableCell>
-                      <TableCell className="text-blue-700">{row.jamPulang}</TableCell>
-                      <TableCell>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(row.status)}`}>
-                          {row.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleShowDetail(row)}
-                          className="border-blue-200 text-blue-600 hover:bg-blue-50"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Detail
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {showDetail && <DetailModal />}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
