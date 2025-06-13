@@ -48,6 +48,39 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_history: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          filename: string
+          id: string
+          records_count: number
+          upload_date: string
+          upload_month: number
+          upload_year: number
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          filename: string
+          id?: string
+          records_count?: number
+          upload_date?: string
+          upload_month: number
+          upload_year: number
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          records_count?: number
+          upload_date?: string
+          upload_month?: number
+          upload_year?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
