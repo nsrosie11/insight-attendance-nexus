@@ -28,13 +28,7 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     return parsedData;
   }
   
-  if (jamMasukRow === -1 || jamPulangRow === -1) {
-    console.log(`Incomplete attendance table structure in sheet ${sheetName}`);
-    console.log(`Debug: jamMasukRow=${jamMasukRow}, jamPulangRow=${jamPulangRow}`);
-    return parsedData;
-  }
-  
-  console.log(`Found complete attendance table structure:`, {
+  console.log(`Found attendance table structure:`, {
     dateRow,
     jamMasukRow,
     jamPulangRow,
@@ -45,43 +39,57 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
   for (const { col, day } of dateColumns) {
     const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     
-    console.log(`Processing date ${tanggal} in column ${col}`);
+    console.log(`Processing date ${tanggal} for day ${day} in column ${col}`);
     
-    // Get jam masuk from jam masuk row
+    // Get jam masuk - look for data in the rows below the date
     let jamMasuk: string | null = null;
-    if (jamMasukRow !== -1) {
-      const jamMasukCell = data[jamMasukRow] && data[jamMasukRow][col];
-      console.log(`Jam masuk cell [${jamMasukRow}][${col}]:`, jamMasukCell);
-      if (jamMasukCell && jamMasukCell.toString().trim()) {
-        const cellValue = jamMasukCell.toString().trim().toLowerCase();
-        if (!cellValue.includes('absen')) {
-          jamMasuk = parseTime(jamMasukCell.toString().trim());
-          console.log(`Parsed jam masuk:`, jamMasuk);
-        } else {
-          console.log(`Jam masuk marked as absen`);
+    
+    // Search in the next few rows after the date row for time data
+    for (let searchRow = dateRow + 1; searchRow < Math.min(data.length, dateRow + 30); searchRow++) {
+      const cell = data[searchRow] && data[searchRow][col];
+      if (cell && cell.toString().trim()) {
+        const cellValue = cell.toString().trim().toLowerCase();
+        console.log(`Checking cell [${searchRow}][${col}] for jam masuk: "${cellValue}"`);
+        
+        if (!cellValue.includes('absen') && cellValue.match(/\d{1,2}[:.]\d{2}/)) {
+          jamMasuk = parseTime(cell.toString().trim());
+          console.log(`Found jam masuk: ${jamMasuk} at [${searchRow}][${col}]`);
+          break;
         }
       }
     }
     
-    // Get jam pulang from jam pulang row
+    // Get jam pulang - look in columns to the right of jam masuk
     let jamPulang: string | null = null;
-    if (jamPulangRow !== -1) {
-      const jamPulangCell = data[jamPulangRow] && data[jamPulangRow][col];
-      console.log(`Jam pulang cell [${jamPulangRow}][${col}]:`, jamPulangCell);
-      if (jamPulangCell && jamPulangCell.toString().trim()) {
-        const cellValue = jamPulangCell.toString().trim().toLowerCase();
-        if (!cellValue.includes('absen')) {
-          jamPulang = parseTime(jamPulangCell.toString().trim());
-          console.log(`Parsed jam pulang:`, jamPulang);
-        } else {
-          console.log(`Jam pulang marked as absen`);
+    
+    // Look in the same row as jam masuk but in adjacent columns
+    if (jamMasuk) {
+      for (let searchRow = dateRow + 1; searchRow < Math.min(data.length, dateRow + 30); searchRow++) {
+        // Check a few columns to the right for jam pulang
+        for (let searchCol = col + 1; searchCol <= col + 5; searchCol++) {
+          const cell = data[searchRow] && data[searchRow][searchCol];
+          if (cell && cell.toString().trim()) {
+            const cellValue = cell.toString().trim().toLowerCase();
+            console.log(`Checking cell [${searchRow}][${searchCol}] for jam pulang: "${cellValue}"`);
+            
+            if (!cellValue.includes('absen') && cellValue.match(/\d{1,2}[:.]\d{2}/)) {
+              const parsedTime = parseTime(cell.toString().trim());
+              // Make sure it's different from jam masuk and looks like afternoon time
+              if (parsedTime && parsedTime !== jamMasuk && parsedTime >= '13:00:00') {
+                jamPulang = parsedTime;
+                console.log(`Found jam pulang: ${jamPulang} at [${searchRow}][${searchCol}]`);
+                break;
+              }
+            }
+          }
         }
+        if (jamPulang) break;
       }
     }
     
     // Skip if both jam masuk and jam pulang are null (absen)
     if (!jamMasuk && !jamPulang) {
-      console.log(`Skipping ${tanggal} for ${employeeInfo.nama} - marked as absen or no data`);
+      console.log(`Skipping ${tanggal} for ${employeeInfo.nama} - no valid time data found`);
       continue;
     }
     

@@ -6,70 +6,71 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
   console.log('Looking for employee info in sheet...');
   console.log('First 10 rows of data:', data.slice(0, 10));
   
-  // Look for nama pattern in first 20 rows
-  for (let row = 0; row < Math.min(data.length, 20); row++) {
-    for (let col = 0; col < Math.min((data[row] || []).length, 10); col++) {
+  // Look for nama pattern in first 10 rows and first 10 columns
+  for (let row = 0; row < Math.min(data.length, 10); row++) {
+    for (let col = 0; col < Math.min((data[row] || []).length, 15); col++) {
       const cell = data[row] && data[row][col];
       if (cell) {
         const cellStr = cell.toString().trim();
         console.log(`Checking cell [${row}][${col}]: "${cellStr}"`);
         
-        // Look for nama pattern - more flexible matching
-        if (cellStr.toLowerCase().includes('nama')) {
-          console.log(`Found "nama" in cell [${row}][${col}]: "${cellStr}"`);
+        // Look for "Nama" keyword
+        if (cellStr.toLowerCase() === 'nama') {
+          console.log(`Found "Nama" keyword at [${row}][${col}]`);
           
-          // Try different patterns for name extraction
-          let nameMatch;
+          // Check adjacent cells for the actual name
+          const adjacentCells = [
+            { r: row, c: col + 1 }, // right
+            { r: row + 1, c: col }, // below
+            { r: row, c: col + 2 }, // 2 columns right
+            { r: row + 1, c: col + 1 } // diagonal
+          ];
           
-          // Pattern 1: "Nama: neila" format
-          nameMatch = cellStr.match(/nama\s*:\s*(.+)/i);
-          if (nameMatch && nameMatch[1].trim()) {
-            nama = nameMatch[1].trim();
-            console.log(`Found employee name (pattern 1): ${nama}`);
-          } else {
-            // Pattern 2: Check adjacent cells
-            const adjacentCells = [
-              data[row] && data[row][col + 1] && data[row][col + 1].toString(), // right
-              data[row + 1] && data[row + 1][col] && data[row + 1][col].toString(), // below
-              data[row + 1] && data[row + 1][col + 1] && data[row + 1][col + 1].toString() // diagonal
-            ];
-            
-            for (const adjCell of adjacentCells) {
-              if (adjCell && adjCell.trim() && !adjCell.toLowerCase().includes('nama')) {
-                nama = adjCell.trim();
-                console.log(`Found employee name (adjacent cell): ${nama}`);
+          for (const adj of adjacentCells) {
+            const adjCell = data[adj.r] && data[adj.r][adj.c];
+            if (adjCell && adjCell.toString().trim()) {
+              const adjStr = adjCell.toString().trim();
+              console.log(`Checking adjacent cell [${adj.r}][${adj.c}]: "${adjStr}"`);
+              
+              // Skip if it's a header or common keywords
+              if (!adjStr.toLowerCase().includes('nama') && 
+                  !adjStr.toLowerCase().includes('dept') &&
+                  !adjStr.toLowerCase().includes('office') &&
+                  !adjStr.toLowerCase().includes('rnd') &&
+                  adjStr.length > 2 && adjStr.length < 30 &&
+                  adjStr.match(/^[a-zA-Z\s]+$/)) {
+                nama = adjStr;
+                console.log(`Found employee name: ${nama}`);
                 break;
               }
             }
           }
           
-          // If we found a name, break out of the inner loop
           if (nama) break;
         }
         
-        // Look for departemen pattern
-        if (cellStr.toLowerCase().includes('dept') || cellStr.toLowerCase().includes('departemen')) {
-          console.log(`Found department keyword in cell [${row}][${col}]: "${cellStr}"`);
+        // Look for department to determine status
+        if (cellStr.toLowerCase().includes('dept') || cellStr.toLowerCase() === 'departemen') {
+          console.log(`Found department keyword at [${row}][${col}]`);
           
-          // Look for department value in adjacent cells or same cell
+          // Check adjacent cells for department value
           const adjacentCells = [
-            cellStr, // same cell
-            data[row] && data[row][col + 1] && data[row][col + 1].toString(), // right
-            data[row + 1] && data[row + 1][col] && data[row + 1][col].toString(), // below
-            data[row + 1] && data[row + 1][col + 1] && data[row + 1][col + 1].toString() // diagonal
+            data[row] && data[row][col + 1] && data[row][col + 1].toString(),
+            data[row + 1] && data[row + 1][col] && data[row + 1][col].toString(),
+            data[row] && data[row][col + 2] && data[row][col + 2].toString()
           ];
           
           for (const adjCell of adjacentCells) {
             if (adjCell) {
               const adjStr = adjCell.toUpperCase().trim();
-              console.log(`Checking department adjacent cell: "${adjStr}"`);
+              console.log(`Checking department value: "${adjStr}"`);
               if (adjStr.includes('RND')) {
                 status = 'magang';
-                console.log(`Found department: RND - status set to magang`);
+                console.log(`Department: RND - status set to magang`);
                 break;
               } else if (adjStr.includes('OFFICE')) {
                 status = 'karyawan';
-                console.log(`Found department: OFFICE - status set to karyawan`);
+                console.log(`Department: OFFICE - status set to karyawan`);
                 break;
               }
             }
@@ -78,33 +79,29 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
       }
     }
     
-    // If we found a name, break out of the outer loop
     if (nama) break;
   }
   
-  // If still no name found, try looking for any text that could be a name
   if (!nama) {
-    console.log('No name found with "nama" keyword, looking for potential names...');
+    console.log('No employee name found with "Nama" keyword, trying alternative approach...');
     
-    for (let row = 0; row < Math.min(data.length, 15); row++) {
-      for (let col = 0; col < Math.min((data[row] || []).length, 8); col++) {
+    // Alternative: look for names in specific positions based on screenshot
+    for (let row = 0; row < Math.min(data.length, 8); row++) {
+      for (let col = 8; col < Math.min((data[row] || []).length, 15); col++) {
         const cell = data[row] && data[row][col];
         if (cell) {
           const cellStr = cell.toString().trim();
           
-          // Look for cells that might contain names (non-empty, not numbers, not common keywords)
+          // Look for potential names (letters only, reasonable length)
           if (cellStr.length > 2 && 
-              cellStr.length < 30 && 
-              !cellStr.match(/^\d+$/) && // not just numbers
+              cellStr.length < 20 && 
+              cellStr.match(/^[a-zA-Z\s]+$/) &&
               !cellStr.toLowerCase().includes('nama') &&
               !cellStr.toLowerCase().includes('dept') &&
               !cellStr.toLowerCase().includes('office') &&
               !cellStr.toLowerCase().includes('rnd') &&
-              !cellStr.toLowerCase().includes('jam') &&
-              !cellStr.toLowerCase().includes('tabel') &&
-              !cellStr.toLowerCase().includes('kehadiran') &&
-              !cellStr.match(/^\d{1,2}\s*[a-z]{2}$/i) && // not date format like "01 Ka"
-              cellStr.match(/^[a-zA-Z\s]+$/)) { // only letters and spaces
+              !cellStr.toLowerCase().includes('tanggal') &&
+              !cellStr.toLowerCase().includes('no')) {
             
             nama = cellStr;
             console.log(`Found potential employee name: ${nama} at [${row}][${col}]`);
