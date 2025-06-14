@@ -109,13 +109,21 @@ const ExcelUpload: React.FC = () => {
         const key = `${item.nama}-${item.tanggal}`;
         if (!seen.has(key)) {
           seen.add(key);
-          uniqueData.push(item);
+          // Pastikan status dalam format yang benar untuk database
+          const formattedItem = {
+            ...item,
+            status: item.status === 'magang' ? 'Magang' : 
+                    item.status === 'karyawan' ? 'Karyawan' : item.status
+          };
+          uniqueData.push(formattedItem);
+          console.log(`Adding item with status: ${formattedItem.status}`);
         } else {
           console.log(`Skipping duplicate entry: ${key}`);
         }
       }
 
       console.log(`Inserting ${uniqueData.length} unique records (filtered from ${parsedData.length} total)`);
+      console.log('Sample data being inserted:', uniqueData.slice(0, 3));
 
       // Insert data ke Supabase
       const { data, error } = await supabase
@@ -123,6 +131,7 @@ const ExcelUpload: React.FC = () => {
         .insert(uniqueData);
 
       if (error) {
+        console.error('Database insert error:', error);
         throw error;
       }
 

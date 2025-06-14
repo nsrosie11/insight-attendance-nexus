@@ -1,7 +1,7 @@
 
 export const findEmployeeInfo = (data: any[][]): { nama: string; status: string } | null => {
   let nama = '';
-  let status = 'karyawan'; // default
+  let status = 'Karyawan'; // default dengan huruf kapital
   
   console.log('Looking for employee info in sheet...');
   console.log('First 10 rows of data:', data.slice(0, 10));
@@ -65,12 +65,12 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
               const adjStr = adjCell.toUpperCase().trim();
               console.log(`Checking department value: "${adjStr}"`);
               if (adjStr.includes('RND')) {
-                status = 'magang';
-                console.log(`Department: RND - status set to magang`);
+                status = 'Magang'; // Gunakan huruf kapital
+                console.log(`Department: RND - status set to Magang`);
                 break;
               } else if (adjStr.includes('OFFICE')) {
-                status = 'karyawan';
-                console.log(`Department: OFFICE - status set to karyawan`);
+                status = 'Karyawan'; // Gunakan huruf kapital
+                console.log(`Department: OFFICE - status set to Karyawan`);
                 break;
               }
             }
