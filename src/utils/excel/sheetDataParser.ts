@@ -8,6 +8,7 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
   const parsedData: ExcelData[] = [];
   
   console.log(`Processing sheet: ${sheetName}`);
+  console.log(`Sheet data preview (first 15 rows):`, data.slice(0, 15));
   
   // Find employee info (nama and status)
   const employeeInfo = findEmployeeInfo(data);
@@ -16,18 +17,29 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     return parsedData;
   }
   
+  console.log(`Found employee info:`, employeeInfo);
+  
   // Find attendance table structure
   const { dateRow, jamMasukRow, jamPulangRow, dateColumns } = findAttendanceTable(data);
   
   if (dateRow === -1 || dateColumns.length === 0) {
     console.log(`No attendance table found in sheet ${sheetName}`);
+    console.log(`Debug: dateRow=${dateRow}, dateColumns.length=${dateColumns.length}`);
     return parsedData;
   }
   
   if (jamMasukRow === -1 || jamPulangRow === -1) {
     console.log(`Incomplete attendance table structure in sheet ${sheetName}`);
+    console.log(`Debug: jamMasukRow=${jamMasukRow}, jamPulangRow=${jamPulangRow}`);
     return parsedData;
   }
+  
+  console.log(`Found complete attendance table structure:`, {
+    dateRow,
+    jamMasukRow,
+    jamPulangRow,
+    dateColumnsCount: dateColumns.length
+  });
   
   // Process each date column
   for (const { col, day } of dateColumns) {
@@ -39,10 +51,14 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     let jamMasuk: string | null = null;
     if (jamMasukRow !== -1) {
       const jamMasukCell = data[jamMasukRow] && data[jamMasukRow][col];
+      console.log(`Jam masuk cell [${jamMasukRow}][${col}]:`, jamMasukCell);
       if (jamMasukCell && jamMasukCell.toString().trim()) {
         const cellValue = jamMasukCell.toString().trim().toLowerCase();
         if (!cellValue.includes('absen')) {
           jamMasuk = parseTime(jamMasukCell.toString().trim());
+          console.log(`Parsed jam masuk:`, jamMasuk);
+        } else {
+          console.log(`Jam masuk marked as absen`);
         }
       }
     }
@@ -51,10 +67,14 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     let jamPulang: string | null = null;
     if (jamPulangRow !== -1) {
       const jamPulangCell = data[jamPulangRow] && data[jamPulangRow][col];
+      console.log(`Jam pulang cell [${jamPulangRow}][${col}]:`, jamPulangCell);
       if (jamPulangCell && jamPulangCell.toString().trim()) {
         const cellValue = jamPulangCell.toString().trim().toLowerCase();
         if (!cellValue.includes('absen')) {
           jamPulang = parseTime(jamPulangCell.toString().trim());
+          console.log(`Parsed jam pulang:`, jamPulang);
+        } else {
+          console.log(`Jam pulang marked as absen`);
         }
       }
     }
@@ -84,5 +104,6 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     parsedData.push(formattedData);
   }
   
+  console.log(`Total parsed entries for ${sheetName}:`, parsedData.length);
   return parsedData;
 };
