@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileSpreadsheet } from 'lucide-react';
@@ -67,7 +66,7 @@ const ExcelUpload: React.FC = () => {
       
       console.log('Available sheets:', workbook.SheetNames);
       
-      const parsed = parseExcelData(workbook);
+      const parsed = parseExcelData(workbook, selectedMonth, selectedYear);
       
       console.log('Final parsed data:', parsed);
       
@@ -102,7 +101,7 @@ const ExcelUpload: React.FC = () => {
     setIsUploading(true);
 
     try {
-      // Check for duplicates before inserting
+      // Check for duplicates based on nama + tanggal before inserting
       const uniqueData = [];
       const seen = new Set();
       
@@ -137,7 +136,7 @@ const ExcelUpload: React.FC = () => {
 
       toast({
         title: "Data berhasil disimpan!",
-        description: `${uniqueData.length} data absensi berhasil disimpan ke database (${parsedData.length - uniqueData.length} duplikat diabaikan)`,
+        description: `${uniqueData.length} data absensi berhasil disimpan ke database${parsedData.length - uniqueData.length > 0 ? ` (${parsedData.length - uniqueData.length} duplikat diabaikan)` : ''}`,
       });
 
       // Reset form
@@ -203,7 +202,7 @@ const ExcelUpload: React.FC = () => {
                 Upload Data Absensi Excel
               </CardTitle>
               <CardDescription className="text-blue-600">
-                Upload file Excel (.xlsx) dengan data absensi dari sheet "Log"
+                Upload file Excel (.xlsx) dengan data absensi dari sheet dengan nama angka (mulai dari 14.15.17)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

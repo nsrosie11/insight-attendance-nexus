@@ -8,6 +8,11 @@ export const parseTime = (timeStr: string): string | null => {
   // Bersihkan string dari karakter yang tidak perlu
   const cleanTimeStr = timeStr.toString().trim();
   
+  // Skip jika berisi "Absen"
+  if (cleanTimeStr.toLowerCase().includes('absen')) {
+    return null;
+  }
+  
   // Handle format HH:MM atau HH:MM:SS
   const timeMatch = cleanTimeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (timeMatch) {
@@ -53,50 +58,47 @@ const shouldProcessSheet = (sheetName: string, allSheetNames: string[]): boolean
 
 const findEmployeeInfo = (data: any[][]): { nama: string; status: string } | null => {
   let nama = '';
-  let status = 'Karyawan'; // default
+  let status = 'karyawan'; // default
   
   console.log('Looking for employee info in sheet...');
   
-  // Look for "Nama:" pattern
+  // Look for "Nama:" pattern in first 20 rows
   for (let row = 0; row < Math.min(data.length, 20); row++) {
     for (let col = 0; col < Math.min((data[row] || []).length, 10); col++) {
       const cell = data[row] && data[row][col];
       if (cell) {
-        const cellStr = cell.toString().toLowerCase().trim();
+        const cellStr = cell.toString().trim();
         
         // Look for nama pattern
-        if (cellStr.includes('nama') && cellStr.includes(':')) {
-          // Look for name in the same cell or next cell
-          const nameMatch = cell.toString().match(/nama\s*:\s*(.+)/i);
+        if (cellStr.toLowerCase().includes('nama') && cellStr.includes(':')) {
+          // Extract name from "Nama: neila" format
+          const nameMatch = cellStr.match(/nama\s*:\s*(.+)/i);
           if (nameMatch && nameMatch[1].trim()) {
             nama = nameMatch[1].trim();
-          } else {
-            // Check next cell
-            const nextCell = data[row] && data[row][col + 1];
-            if (nextCell && nextCell.toString().trim()) {
-              nama = nextCell.toString().trim();
-            }
+            console.log(`Found employee name: ${nama}`);
           }
         }
         
         // Look for departemen pattern
-        if (cellStr.includes('dept') || cellStr.includes('departemen')) {
-          // Look for department value in adjacent cells
+        if (cellStr.toLowerCase().includes('dept') || cellStr.toLowerCase().includes('departemen')) {
+          // Look for department value in adjacent cells or same cell
           const adjacentCells = [
-            cell.toString(), // same cell
-            data[row] && data[row][col + 1], // right
-            data[row + 1] && data[row + 1][col], // below
-            data[row + 1] && data[row + 1][col + 1] // diagonal
+            cellStr, // same cell
+            data[row] && data[row][col + 1] && data[row][col + 1].toString(), // right
+            data[row + 1] && data[row + 1][col] && data[row + 1][col].toString(), // below
+            data[row + 1] && data[row + 1][col + 1] && data[row + 1][col + 1].toString() // diagonal
           ];
           
           for (const adjCell of adjacentCells) {
             if (adjCell) {
-              const adjStr = adjCell.toString().toUpperCase().trim();
+              const adjStr = adjCell.toUpperCase().trim();
               if (adjStr.includes('RND')) {
-                status = 'Magang';
+                status = 'magang';
+                console.log(`Found department: RND - status set to magang`);
                 break;
               } else if (adjStr.includes('OFFICE')) {
-                status = 'Karyawan';
+                status = 'karyawan';
+                console.log(`Found department: OFFICE - status set to karyawan`);
                 break;
               }
             }
@@ -111,7 +113,7 @@ const findEmployeeInfo = (data: any[][]): { nama: string; status: string } | nul
     return null;
   }
   
-  console.log(`Found employee: ${nama} with status: ${status}`);
+  console.log(`Final employee info: ${nama} with status: ${status}`);
   return { nama, status };
 };
 
@@ -126,7 +128,7 @@ const findAttendanceTable = (data: any[][]): {
   let jamPulangRow = -1;
   const dateColumns: Array<{ col: number; day: number }> = [];
   
-  console.log('Looking for attendance table...');
+  console.log('Looking for attendance table (Tabel Kehadiran)...');
   
   // Find date row (look for patterns like "01 Ka", "02 Ju", etc.)
   for (let row = 0; row < data.length; row++) {
@@ -141,8 +143,10 @@ const findAttendanceTable = (data: any[][]): {
         const dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{2}/);
         if (dayMatch) {
           const day = parseInt(dayMatch[1]);
-          tempDateColumns.push({ col, day });
-          foundDatesInRow++;
+          if (day >= 1 && day <= 31) {
+            tempDateColumns.push({ col, day });
+            foundDatesInRow++;
+          }
         }
       }
     }
@@ -158,7 +162,7 @@ const findAttendanceTable = (data: any[][]): {
   
   // Find jam masuk and jam pulang rows after date row
   if (dateRow !== -1) {
-    for (let row = dateRow + 1; row < Math.min(data.length, dateRow + 15); row++) {
+    for (let row = dateRow + 1; row < Math.min(data.length, dateRow + 20); row++) {
       for (let col = 0; col < (data[row] || []).length; col++) {
         const cell = data[row] && data[row][col];
         if (cell) {
@@ -180,10 +184,11 @@ const findAttendanceTable = (data: any[][]): {
     }
   }
   
+  console.log(`Attendance table structure: dateRow=${dateRow}, jamMasukRow=${jamMasukRow}, jamPulangRow=${jamPulangRow}, dateColumns=${dateColumns.length}`);
   return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
 };
 
-const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
+const parseSheetData = (data: any[][], sheetName: string, selectedMonth: number, selectedYear: number): ExcelData[] => {
   const parsedData: ExcelData[] = [];
   
   console.log(`Processing sheet: ${sheetName}`);
@@ -209,11 +214,8 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
   }
   
   // Process each date column
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-  
   for (const { col, day } of dateColumns) {
-    const tanggal = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     
     console.log(`Processing date ${tanggal} in column ${col}`);
     
@@ -221,8 +223,11 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
     let jamMasuk: string | null = null;
     if (jamMasukRow !== -1) {
       const jamMasukCell = data[jamMasukRow] && data[jamMasukRow][col];
-      if (jamMasukCell && jamMasukCell.toString().trim() && !jamMasukCell.toString().toLowerCase().includes('absen')) {
-        jamMasuk = parseTime(jamMasukCell.toString().trim());
+      if (jamMasukCell && jamMasukCell.toString().trim()) {
+        const cellValue = jamMasukCell.toString().trim().toLowerCase();
+        if (!cellValue.includes('absen')) {
+          jamMasuk = parseTime(jamMasukCell.toString().trim());
+        }
       }
     }
     
@@ -230,8 +235,11 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
     let jamPulang: string | null = null;
     if (jamPulangRow !== -1) {
       const jamPulangCell = data[jamPulangRow] && data[jamPulangRow][col];
-      if (jamPulangCell && jamPulangCell.toString().trim() && !jamPulangCell.toString().toLowerCase().includes('absen')) {
-        jamPulang = parseTime(jamPulangCell.toString().trim());
+      if (jamPulangCell && jamPulangCell.toString().trim()) {
+        const cellValue = jamPulangCell.toString().trim().toLowerCase();
+        if (!cellValue.includes('absen')) {
+          jamPulang = parseTime(jamPulangCell.toString().trim());
+        }
       }
     }
     
@@ -248,7 +256,7 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
     
     const formattedData: ExcelData = {
       nama: employeeInfo.nama,
-      status: employeeInfo.status.toLowerCase(),
+      status: employeeInfo.status,
       tanggal,
       jam_masuk: jamMasuk,
       jam_pulang: jamPulang,
@@ -263,7 +271,7 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
   return parsedData;
 };
 
-export const parseExcelData = (workbook: XLSX.WorkBook): ExcelData[] => {
+export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, selectedYear: number): ExcelData[] => {
   const allParsedData: ExcelData[] = [];
   
   console.log('Available sheets:', workbook.SheetNames);
@@ -285,7 +293,7 @@ export const parseExcelData = (workbook: XLSX.WorkBook): ExcelData[] => {
       if (!sheet) continue;
       
       const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-      const sheetData = parseSheetData(data, sheetName);
+      const sheetData = parseSheetData(data, sheetName, selectedMonth, selectedYear);
       
       allParsedData.push(...sheetData);
       
