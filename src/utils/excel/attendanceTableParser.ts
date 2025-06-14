@@ -36,12 +36,11 @@ export const findAttendanceTable = (data: any[][]): {
   let headerRow = -1;
   for (let row = tableStartRow + 1; row < Math.min(data.length, tableStartRow + 5); row++) {
     const rowData = data[row] || [];
-    console.log(`Checking row ${row} for headers:`, rowData);
+    console.log(`Checking row ${row} for headers:`, rowData.slice(0, 15));
     
     // Look for pattern: Tgl/Hari, Jam Kerja 1, Jam Kerja 2
     let foundTglHari = false;
-    let foundJamKerja1 = false;
-    let foundJamKerja2 = false;
+    let foundJamKerja = false;
     
     for (let col = 0; col < rowData.length; col++) {
       const cell = rowData[col];
@@ -51,18 +50,14 @@ export const findAttendanceTable = (data: any[][]): {
           foundTglHari = true;
           console.log(`Found Tgl/Hari header at [${row}][${col}]`);
         }
-        if (cellStr.includes('jam kerja 1')) {
-          foundJamKerja1 = true;
-          console.log(`Found Jam Kerja 1 header at [${row}][${col}]`);
-        }
-        if (cellStr.includes('jam kerja 2')) {
-          foundJamKerja2 = true;
-          console.log(`Found Jam Kerja 2 header at [${row}][${col}]`);
+        if (cellStr.includes('jam kerja')) {
+          foundJamKerja = true;
+          console.log(`Found Jam Kerja header at [${row}][${col}]`);
         }
       }
     }
     
-    if (foundTglHari && foundJamKerja1 && foundJamKerja2) {
+    if (foundTglHari && foundJamKerja) {
       headerRow = row;
       console.log(`Found complete header row at ${row}`);
       break;
@@ -70,7 +65,7 @@ export const findAttendanceTable = (data: any[][]): {
   }
   
   if (headerRow === -1) {
-    console.log('Could not find header row with Tgl/Hari, Jam Kerja 1, Jam Kerja 2');
+    console.log('Could not find header row with Tgl/Hari and Jam Kerja');
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
@@ -78,7 +73,7 @@ export const findAttendanceTable = (data: any[][]): {
   let subHeaderRow = -1;
   for (let row = headerRow + 1; row < Math.min(data.length, headerRow + 3); row++) {
     const rowData = data[row] || [];
-    console.log(`Checking row ${row} for sub-headers:`, rowData);
+    console.log(`Checking row ${row} for sub-headers:`, rowData.slice(0, 15));
     
     let foundMsuk = false;
     let foundKluar = false;
@@ -110,10 +105,13 @@ export const findAttendanceTable = (data: any[][]): {
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
-  // Now find the actual date row (should be after sub-header)
-  for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 10); row++) {
+  // Now find the actual date row (should be right after sub-header)
+  // Look more broadly in the next several rows after sub-header
+  console.log(`Searching for date row starting from row ${subHeaderRow + 1}`);
+  
+  for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 20); row++) {
     const rowData = data[row] || [];
-    console.log(`Checking row ${row} for dates:`, rowData);
+    console.log(`Checking row ${row} for dates:`, rowData.slice(0, 20));
     
     let foundDatesInRow = 0;
     const tempDateColumns: Array<{ col: number; day: number }> = [];
@@ -122,9 +120,21 @@ export const findAttendanceTable = (data: any[][]): {
       const cell = rowData[col];
       if (cell) {
         const cellStr = cell.toString().trim();
+        console.log(`Checking cell [${row}][${col}]: "${cellStr}"`);
         
-        // Look for date patterns like "01 Ka", "02 Ju", etc.
-        let dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{2}$/);
+        // Look for date patterns - be more flexible
+        // Try patterns like "01 Ka", "1 Se", "02 Ju", etc.
+        let dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{0,2}$/);
+        
+        // Also try just pure numbers
+        if (!dayMatch && /^\d{1,2}$/.test(cellStr)) {
+          dayMatch = [cellStr, cellStr];
+        }
+        
+        // Also try pattern like "01Ka" without space
+        if (!dayMatch) {
+          dayMatch = cellStr.match(/^(\d{1,2})[A-Za-z]{0,2}$/);
+        }
         
         if (dayMatch) {
           const day = parseInt(dayMatch[1]);
@@ -137,8 +147,8 @@ export const findAttendanceTable = (data: any[][]): {
       }
     }
     
-    // If we found at least 5 dates, it's probably the date row
-    if (foundDatesInRow >= 5) {
+    // If we found at least 3 dates, it's probably the date row
+    if (foundDatesInRow >= 3) {
       dateRow = row;
       dateColumns.push(...tempDateColumns);
       console.log(`Found date row at ${row} with ${foundDatesInRow} dates`);
@@ -147,29 +157,42 @@ export const findAttendanceTable = (data: any[][]): {
   }
   
   if (dateRow === -1) {
-    console.log('Could not find date row');
-    return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
-  }
-  
-  // Find jam masuk and jam pulang columns based on sub-header structure
-  const subHeaderData = data[subHeaderRow] || [];
-  let jamMasukCol = -1;
-  let jamPulangCol = -1;
-  
-  console.log('Sub-header data:', subHeaderData);
-  
-  for (let col = 0; col < subHeaderData.length; col++) {
-    const cell = subHeaderData[col];
-    if (cell) {
-      const cellStr = cell.toString().toLowerCase();
-      if (cellStr.includes('msuk') && jamMasukCol === -1) {
-        jamMasukCol = col;
-        console.log(`Found jam masuk column at ${col}`);
-      } else if (cellStr.includes('kluar') && jamPulangCol === -1) {
-        jamPulangCol = col;
-        console.log(`Found jam pulang column at ${col}`);
+    console.log('Could not find date row - trying alternative approach');
+    
+    // Alternative: look for any row with multiple number patterns
+    for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 20); row++) {
+      const rowData = data[row] || [];
+      let numberCount = 0;
+      const tempDateColumns: Array<{ col: number; day: number }> = [];
+      
+      for (let col = 0; col < rowData.length; col++) {
+        const cell = rowData[col];
+        if (cell) {
+          const cellStr = cell.toString().trim();
+          // Look for any 1-2 digit numbers
+          if (/^\d{1,2}/.test(cellStr)) {
+            const num = parseInt(cellStr.match(/^(\d{1,2})/)[1]);
+            if (num >= 1 && num <= 31) {
+              tempDateColumns.push({ col, day: num });
+              numberCount++;
+              console.log(`Alternative: Found potential date ${num} at [${row}][${col}]`);
+            }
+          }
+        }
+      }
+      
+      if (numberCount >= 3) {
+        dateRow = row;
+        dateColumns.push(...tempDateColumns);
+        console.log(`Alternative: Found date row at ${row} with ${numberCount} dates`);
+        break;
       }
     }
+  }
+  
+  if (dateRow === -1) {
+    console.log('Still could not find date row');
+    return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
   // Set jam masuk and jam pulang rows to be the same as date row
@@ -178,5 +201,6 @@ export const findAttendanceTable = (data: any[][]): {
   jamPulangRow = dateRow;
   
   console.log(`Final structure: dateRow=${dateRow}, jamMasukRow=${jamMasukRow}, jamPulangRow=${jamPulangRow}, dateColumns=${dateColumns.length}`);
+  console.log('Date columns found:', dateColumns);
   return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
 };

@@ -8,7 +8,7 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
   const parsedData: ExcelData[] = [];
   
   console.log(`Processing sheet: ${sheetName}`);
-  console.log(`Sheet data preview (first 15 rows):`, data.slice(0, 15));
+  console.log(`Sheet data preview (first 20 rows):`, data.slice(0, 20));
   
   // Find employee info (nama and status)
   const employeeInfo = findEmployeeInfo(data);
@@ -32,64 +32,100 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     dateRow,
     jamMasukRow,
     jamPulangRow,
-    dateColumnsCount: dateColumns.length
+    dateColumnsCount: dateColumns.length,
+    dateColumns: dateColumns.slice(0, 5) // Show first 5 for debugging
   });
   
   // Process each date column
   for (const { col, day } of dateColumns) {
     const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     
-    console.log(`Processing date ${tanggal} for day ${day} in column ${col}`);
+    console.log(`\n=== Processing date ${tanggal} for day ${day} in column ${col} ===`);
     
-    // Get jam masuk - look for data in the rows below the date
+    // Get jam masuk - look for data in the rows below and around the date
     let jamMasuk: string | null = null;
     
-    // Search in the next few rows after the date row for time data
-    for (let searchRow = dateRow + 1; searchRow < Math.min(data.length, dateRow + 30); searchRow++) {
+    // Search in multiple rows around the date for time data
+    const searchRows = [
+      dateRow + 1, dateRow + 2, dateRow + 3, dateRow + 4, dateRow + 5,
+      dateRow - 1, dateRow - 2 // Also check rows above just in case
+    ];
+    
+    for (const searchRow of searchRows) {
+      if (searchRow < 0 || searchRow >= data.length) continue;
+      
       const cell = data[searchRow] && data[searchRow][col];
       if (cell && cell.toString().trim()) {
-        const cellValue = cell.toString().trim().toLowerCase();
+        const cellValue = cell.toString().trim();
         console.log(`Checking cell [${searchRow}][${col}] for jam masuk: "${cellValue}"`);
         
-        if (!cellValue.includes('absen') && cellValue.match(/\d{1,2}[:.]\d{2}/)) {
-          jamMasuk = parseTime(cell.toString().trim());
-          console.log(`Found jam masuk: ${jamMasuk} at [${searchRow}][${col}]`);
-          break;
+        // Skip cells with "absen" or similar
+        if (cellValue.toLowerCase().includes('absen') || 
+            cellValue.toLowerCase().includes('ijin') ||
+            cellValue.toLowerCase().includes('sakit')) {
+          console.log(`Skipping ${cellValue} - indicates absence`);
+          continue;
+        }
+        
+        // Look for time patterns
+        if (cellValue.match(/\d{1,2}[:.]\d{2}/) || cellValue.match(/^\d{1,2}$/)) {
+          const parsedJamMasuk = parseTime(cellValue);
+          if (parsedJamMasuk) {
+            jamMasuk = parsedJamMasuk;
+            console.log(`Found jam masuk: ${jamMasuk} at [${searchRow}][${col}]`);
+            break;
+          }
         }
       }
     }
     
-    // Get jam pulang - look in columns to the right of jam masuk
+    // Get jam pulang - look in adjacent columns and surrounding rows
     let jamPulang: string | null = null;
     
-    // Look in the same row as jam masuk but in adjacent columns
-    if (jamMasuk) {
-      for (let searchRow = dateRow + 1; searchRow < Math.min(data.length, dateRow + 30); searchRow++) {
-        // Check a few columns to the right for jam pulang
-        for (let searchCol = col + 1; searchCol <= col + 5; searchCol++) {
-          const cell = data[searchRow] && data[searchRow][searchCol];
-          if (cell && cell.toString().trim()) {
-            const cellValue = cell.toString().trim().toLowerCase();
-            console.log(`Checking cell [${searchRow}][${searchCol}] for jam pulang: "${cellValue}"`);
-            
-            if (!cellValue.includes('absen') && cellValue.match(/\d{1,2}[:.]\d{2}/)) {
-              const parsedTime = parseTime(cell.toString().trim());
-              // Make sure it's different from jam masuk and looks like afternoon time
-              if (parsedTime && parsedTime !== jamMasuk && parsedTime >= '13:00:00') {
-                jamPulang = parsedTime;
+    // Search in nearby columns and rows for jam pulang
+    for (const searchRow of searchRows) {
+      if (searchRow < 0 || searchRow >= data.length) continue;
+      
+      // Check multiple columns to the right and left
+      const searchCols = [col + 1, col + 2, col + 3, col - 1];
+      
+      for (const searchCol of searchCols) {
+        if (searchCol < 0) continue;
+        
+        const cell = data[searchRow] && data[searchRow][searchCol];
+        if (cell && cell.toString().trim()) {
+          const cellValue = cell.toString().trim();
+          console.log(`Checking cell [${searchRow}][${searchCol}] for jam pulang: "${cellValue}"`);
+          
+          // Skip cells with "absen" or similar
+          if (cellValue.toLowerCase().includes('absen') || 
+              cellValue.toLowerCase().includes('ijin') ||
+              cellValue.toLowerCase().includes('sakit')) {
+            continue;
+          }
+          
+          // Look for time patterns
+          if (cellValue.match(/\d{1,2}[:.]\d{2}/) || cellValue.match(/^\d{1,2}$/)) {
+            const parsedJamPulang = parseTime(cellValue);
+            if (parsedJamPulang && parsedJamPulang !== jamMasuk) {
+              // Check if this looks like afternoon time (after 12:00)
+              if (parsedJamPulang >= '12:00:00') {
+                jamPulang = parsedJamPulang;
                 console.log(`Found jam pulang: ${jamPulang} at [${searchRow}][${searchCol}]`);
                 break;
               }
             }
           }
         }
-        if (jamPulang) break;
       }
+      if (jamPulang) break;
     }
     
-    // Skip if both jam masuk and jam pulang are null (absen)
+    console.log(`Final times for ${tanggal}: jam_masuk=${jamMasuk}, jam_pulang=${jamPulang}`);
+    
+    // Skip if both jam masuk and jam pulang are null (indicates absence)
     if (!jamMasuk && !jamPulang) {
-      console.log(`Skipping ${tanggal} for ${employeeInfo.nama} - no valid time data found`);
+      console.log(`Skipping ${tanggal} for ${employeeInfo.nama} - no valid time data found (likely absent)`);
       continue;
     }
     
@@ -108,10 +144,10 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
       pulang_tercatat
     };
     
-    console.log(`Data for ${employeeInfo.nama} on ${tanggal}:`, formattedData);
+    console.log(`✓ Data for ${employeeInfo.nama} on ${tanggal}:`, formattedData);
     parsedData.push(formattedData);
   }
   
-  console.log(`Total parsed entries for ${sheetName}:`, parsedData.length);
+  console.log(`\n=== SUMMARY: Total parsed entries for ${sheetName}: ${parsedData.length} ===`);
   return parsedData;
 };
