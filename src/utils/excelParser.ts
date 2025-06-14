@@ -51,70 +51,82 @@ const shouldProcessSheet = (sheetName: string, allSheetNames: string[]): boolean
   return true;
 };
 
-const findEmployeesInSheet = (data: any[][]): EmployeeInfo[] => {
-  const employees: EmployeeInfo[] = [];
+const findEmployeeInfo = (data: any[][]): { nama: string; status: string } | null => {
+  let nama = '';
+  let status = 'Karyawan'; // default
   
-  console.log('Looking for employees in sheet data...');
+  console.log('Looking for employee info in sheet...');
   
-  // Look for "Nama" pattern to find employee names
-  for (let row = 0; row < data.length; row++) {
-    for (let col = 0; col < (data[row] || []).length; col++) {
+  // Look for "Nama:" pattern
+  for (let row = 0; row < Math.min(data.length, 20); row++) {
+    for (let col = 0; col < Math.min((data[row] || []).length, 10); col++) {
       const cell = data[row] && data[row][col];
-      if (cell && cell.toString().toLowerCase().includes('nama')) {
-        // Look for name in the next column
-        const nameCell = data[row] && data[row][col + 1];
-        if (nameCell && nameCell.toString().trim()) {
-          const nama = nameCell.toString().trim();
+      if (cell) {
+        const cellStr = cell.toString().toLowerCase().trim();
+        
+        // Look for nama pattern
+        if (cellStr.includes('nama') && cellStr.includes(':')) {
+          // Look for name in the same cell or next cell
+          const nameMatch = cell.toString().match(/nama\s*:\s*(.+)/i);
+          if (nameMatch && nameMatch[1].trim()) {
+            nama = nameMatch[1].trim();
+          } else {
+            // Check next cell
+            const nextCell = data[row] && data[row][col + 1];
+            if (nextCell && nextCell.toString().trim()) {
+              nama = nextCell.toString().trim();
+            }
+          }
+        }
+        
+        // Look for departemen pattern
+        if (cellStr.includes('dept') || cellStr.includes('departemen')) {
+          // Look for department value in adjacent cells
+          const adjacentCells = [
+            cell.toString(), // same cell
+            data[row] && data[row][col + 1], // right
+            data[row + 1] && data[row + 1][col], // below
+            data[row + 1] && data[row + 1][col + 1] // diagonal
+          ];
           
-          // Look for department (Dept) information nearby
-          let status = 'Karyawan'; // default
-          
-          // Search in surrounding area for "Dept" keyword
-          for (let searchRow = Math.max(0, row - 3); searchRow <= Math.min(data.length - 1, row + 3); searchRow++) {
-            for (let searchCol = Math.max(0, col - 2); searchCol <= Math.min((data[searchRow] || []).length - 1, col + 4); searchCol++) {
-              const searchCell = data[searchRow] && data[searchRow][searchCol];
-              if (searchCell && searchCell.toString().toLowerCase().includes('dept')) {
-                // Look for department value in adjacent cells
-                const deptValueCells = [
-                  data[searchRow] && data[searchRow][searchCol + 1], // right
-                  data[searchRow + 1] && data[searchRow + 1][searchCol], // below
-                  data[searchRow + 1] && data[searchRow + 1][searchCol + 1] // diagonal
-                ];
-                
-                for (const deptCell of deptValueCells) {
-                  if (deptCell) {
-                    const deptStr = deptCell.toString().toUpperCase().trim();
-                    console.log(`Found dept value: "${deptStr}" for ${nama}`);
-                    if (deptStr.includes('RND')) {
-                      status = 'Magang';
-                      break;
-                    } else if (deptStr.includes('OFFICE')) {
-                      status = 'Karyawan';
-                      break;
-                    }
-                  }
-                }
-                if (status !== 'Karyawan') break;
+          for (const adjCell of adjacentCells) {
+            if (adjCell) {
+              const adjStr = adjCell.toString().toUpperCase().trim();
+              if (adjStr.includes('RND')) {
+                status = 'Magang';
+                break;
+              } else if (adjStr.includes('OFFICE')) {
+                status = 'Karyawan';
+                break;
               }
             }
-            if (status !== 'Karyawan') break;
           }
-          
-          console.log(`Found employee: ${nama} with status: ${status}`);
-          employees.push({ nama, dept: status, rowIndex: row });
         }
       }
     }
   }
   
-  return employees;
+  if (!nama) {
+    console.log('No employee name found in sheet');
+    return null;
+  }
+  
+  console.log(`Found employee: ${nama} with status: ${status}`);
+  return { nama, status };
 };
 
-const findDateRowAndColumns = (data: any[][]): { dateRow: number; dateColumns: Array<{ col: number; day: number }> } => {
+const findAttendanceTable = (data: any[][]): { 
+  dateRow: number; 
+  jamMasukRow: number; 
+  jamPulangRow: number; 
+  dateColumns: Array<{ col: number; day: number }> 
+} => {
   let dateRow = -1;
+  let jamMasukRow = -1;
+  let jamPulangRow = -1;
   const dateColumns: Array<{ col: number; day: number }> = [];
   
-  console.log('Looking for date row...');
+  console.log('Looking for attendance table...');
   
   // Find date row (look for patterns like "01 Ka", "02 Ju", etc.)
   for (let row = 0; row < data.length; row++) {
@@ -144,33 +156,31 @@ const findDateRowAndColumns = (data: any[][]): { dateRow: number; dateColumns: A
     }
   }
   
-  return { dateRow, dateColumns };
-};
-
-const findTimeRows = (data: any[][], startRow: number): { jamMasukRow: number; jamPulangRow: number } => {
-  let jamMasukRow = -1;
-  let jamPulangRow = -1;
-  
-  console.log('Looking for time rows starting from row', startRow);
-  
-  // Look for "Jam Kerja 1" and "Jam Kerja 2" rows
-  for (let row = startRow; row < Math.min(data.length, startRow + 10); row++) {
-    for (let col = 0; col < (data[row] || []).length; col++) {
-      const cell = data[row] && data[row][col];
-      if (cell) {
-        const cellStr = cell.toString().toLowerCase();
-        if (cellStr.includes('jam kerja 1') && cellStr.includes('masuk')) {
-          jamMasukRow = row;
-          console.log(`Found jam masuk row at ${row}`);
-        } else if (cellStr.includes('jam kerja 2') && cellStr.includes('masuk')) {
-          jamPulangRow = row;
-          console.log(`Found jam pulang row at ${row}`);
+  // Find jam masuk and jam pulang rows after date row
+  if (dateRow !== -1) {
+    for (let row = dateRow + 1; row < Math.min(data.length, dateRow + 15); row++) {
+      for (let col = 0; col < (data[row] || []).length; col++) {
+        const cell = data[row] && data[row][col];
+        if (cell) {
+          const cellStr = cell.toString().toLowerCase();
+          
+          // Look for "Jam Kerja 1" and "Masuk" pattern for jam masuk
+          if (cellStr.includes('jam kerja 1') && cellStr.includes('masuk')) {
+            jamMasukRow = row;
+            console.log(`Found jam masuk row at ${row}`);
+          }
+          
+          // Look for "Jam Kerja 2" and "Masuk" pattern for jam pulang
+          if (cellStr.includes('jam kerja 2') && cellStr.includes('masuk')) {
+            jamPulangRow = row;
+            console.log(`Found jam pulang row at ${row}`);
+          }
         }
       }
     }
   }
   
-  return { jamMasukRow, jamPulangRow };
+  return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
 };
 
 const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
@@ -178,28 +188,27 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
   
   console.log(`Processing sheet: ${sheetName}`);
   
-  // Find employees
-  const employees = findEmployeesInSheet(data);
-  
-  if (employees.length === 0) {
-    console.log(`No employees found in sheet ${sheetName}`);
+  // Find employee info (nama and status)
+  const employeeInfo = findEmployeeInfo(data);
+  if (!employeeInfo) {
+    console.log(`No employee info found in sheet ${sheetName}`);
     return parsedData;
   }
   
-  // Find date row and columns
-  const { dateRow, dateColumns } = findDateRowAndColumns(data);
+  // Find attendance table structure
+  const { dateRow, jamMasukRow, jamPulangRow, dateColumns } = findAttendanceTable(data);
   
   if (dateRow === -1 || dateColumns.length === 0) {
-    console.log(`No date row found in sheet ${sheetName}`);
+    console.log(`No attendance table found in sheet ${sheetName}`);
     return parsedData;
   }
   
-  // Find time rows
-  const { jamMasukRow, jamPulangRow } = findTimeRows(data, dateRow + 1);
+  if (jamMasukRow === -1 || jamPulangRow === -1) {
+    console.log(`Incomplete attendance table structure in sheet ${sheetName}`);
+    return parsedData;
+  }
   
-  console.log(`Time rows - Masuk: ${jamMasukRow}, Pulang: ${jamPulangRow}`);
-  
-  // Process each date and employee combination
+  // Process each date column
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
@@ -208,44 +217,47 @@ const parseSheetData = (data: any[][], sheetName: string): ExcelData[] => {
     
     console.log(`Processing date ${tanggal} in column ${col}`);
     
-    for (const employee of employees) {
-      let jamMasuk: string | null = null;
-      let jamPulang: string | null = null;
-      
-      // Get jam masuk from the jam masuk row
-      if (jamMasukRow !== -1) {
-        const jamMasukCell = data[jamMasukRow] && data[jamMasukRow][col];
-        if (jamMasukCell && jamMasukCell.toString().trim()) {
-          jamMasuk = parseTime(jamMasukCell.toString().trim());
-        }
+    // Get jam masuk from jam masuk row
+    let jamMasuk: string | null = null;
+    if (jamMasukRow !== -1) {
+      const jamMasukCell = data[jamMasukRow] && data[jamMasukRow][col];
+      if (jamMasukCell && jamMasukCell.toString().trim() && !jamMasukCell.toString().toLowerCase().includes('absen')) {
+        jamMasuk = parseTime(jamMasukCell.toString().trim());
       }
-      
-      // Get jam pulang from the jam pulang row
-      if (jamPulangRow !== -1) {
-        const jamPulangCell = data[jamPulangRow] && data[jamPulangRow][col];
-        if (jamPulangCell && jamPulangCell.toString().trim()) {
-          jamPulang = parseTime(jamPulangCell.toString().trim());
-        }
-      }
-      
-      // Calculate status
-      const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
-      const pulang_tercatat = jamPulang ? 
-        (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
-      
-      const formattedData: ExcelData = {
-        nama: employee.nama,
-        status: employee.dept, // Use the department status directly
-        tanggal,
-        jam_masuk: jamMasuk,
-        jam_pulang: jamPulang,
-        terlambat,
-        pulang_tercatat
-      };
-      
-      console.log(`Data for ${employee.nama} on ${tanggal}:`, formattedData);
-      parsedData.push(formattedData);
     }
+    
+    // Get jam pulang from jam pulang row
+    let jamPulang: string | null = null;
+    if (jamPulangRow !== -1) {
+      const jamPulangCell = data[jamPulangRow] && data[jamPulangRow][col];
+      if (jamPulangCell && jamPulangCell.toString().trim() && !jamPulangCell.toString().toLowerCase().includes('absen')) {
+        jamPulang = parseTime(jamPulangCell.toString().trim());
+      }
+    }
+    
+    // Skip if both jam masuk and jam pulang are null (absen)
+    if (!jamMasuk && !jamPulang) {
+      console.log(`Skipping ${tanggal} for ${employeeInfo.nama} - marked as absen or no data`);
+      continue;
+    }
+    
+    // Calculate terlambat and pulang_tercatat
+    const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
+    const pulang_tercatat = jamPulang ? 
+      (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
+    
+    const formattedData: ExcelData = {
+      nama: employeeInfo.nama,
+      status: employeeInfo.status.toLowerCase(),
+      tanggal,
+      jam_masuk: jamMasuk,
+      jam_pulang: jamPulang,
+      terlambat,
+      pulang_tercatat
+    };
+    
+    console.log(`Data for ${employeeInfo.nama} on ${tanggal}:`, formattedData);
+    parsedData.push(formattedData);
   }
   
   return parsedData;

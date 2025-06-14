@@ -102,10 +102,26 @@ const ExcelUpload: React.FC = () => {
     setIsUploading(true);
 
     try {
+      // Check for duplicates before inserting
+      const uniqueData = [];
+      const seen = new Set();
+      
+      for (const item of parsedData) {
+        const key = `${item.nama}-${item.tanggal}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueData.push(item);
+        } else {
+          console.log(`Skipping duplicate entry: ${key}`);
+        }
+      }
+
+      console.log(`Inserting ${uniqueData.length} unique records (filtered from ${parsedData.length} total)`);
+
       // Insert data ke Supabase
       const { data, error } = await supabase
         .from('absensi')
-        .insert(parsedData);
+        .insert(uniqueData);
 
       if (error) {
         throw error;
@@ -116,12 +132,12 @@ const ExcelUpload: React.FC = () => {
         filename: file?.name || 'Unknown file',
         upload_month: selectedMonth,
         upload_year: selectedYear,
-        records_count: parsedData.length,
+        records_count: uniqueData.length,
       });
 
       toast({
         title: "Data berhasil disimpan!",
-        description: `${parsedData.length} data absensi berhasil disimpan ke database`,
+        description: `${uniqueData.length} data absensi berhasil disimpan ke database (${parsedData.length - uniqueData.length} duplikat diabaikan)`,
       });
 
       // Reset form
