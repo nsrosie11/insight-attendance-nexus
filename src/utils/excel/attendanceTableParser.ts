@@ -32,13 +32,12 @@ export const findAttendanceTable = (data: any[][]): {
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
-  // Look for the header row with "Tgl/Hari", "Jam Kerja 1", "Jam Kerja 2"
+  // Look for the main header row (Tgl/Hari, Jam Kerja 1, Jam Kerja 2)
   let headerRow = -1;
-  for (let row = tableStartRow + 1; row < Math.min(data.length, tableStartRow + 5); row++) {
+  for (let row = tableStartRow + 1; row < Math.min(data.length, tableStartRow + 10); row++) {
     const rowData = data[row] || [];
-    console.log(`Checking row ${row} for headers:`, rowData.slice(0, 15));
+    console.log(`Checking row ${row} for main headers:`, rowData.slice(0, 20));
     
-    // Look for pattern: Tgl/Hari, Jam Kerja 1, Jam Kerja 2
     let foundTglHari = false;
     let foundJamKerja = false;
     
@@ -59,148 +58,133 @@ export const findAttendanceTable = (data: any[][]): {
     
     if (foundTglHari && foundJamKerja) {
       headerRow = row;
-      console.log(`Found complete header row at ${row}`);
+      console.log(`Found main header row at ${row}`);
       break;
     }
   }
   
   if (headerRow === -1) {
-    console.log('Could not find header row with Tgl/Hari and Jam Kerja');
+    console.log('Could not find main header row');
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
-  // Look for sub-header row with "Msuk" and "Kluar"
-  let subHeaderRow = -1;
-  for (let row = headerRow + 1; row < Math.min(data.length, headerRow + 3); row++) {
+  // Look for sub-header row (Msuk/Kluar) - should be right after main header
+  let subHeaderRow = headerRow + 1;
+  const subHeaderData = data[subHeaderRow] || [];
+  console.log(`Checking sub-header row ${subHeaderRow}:`, subHeaderData.slice(0, 20));
+  
+  // Now look for the actual date row - should be after sub-header
+  console.log(`Looking for date row starting from row ${subHeaderRow + 1}`);
+  
+  for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 10); row++) {
     const rowData = data[row] || [];
-    console.log(`Checking row ${row} for sub-headers:`, rowData.slice(0, 15));
-    
-    let foundMsuk = false;
-    let foundKluar = false;
-    
-    for (let col = 0; col < rowData.length; col++) {
-      const cell = rowData[col];
-      if (cell) {
-        const cellStr = cell.toString().toLowerCase();
-        if (cellStr.includes('msuk')) {
-          foundMsuk = true;
-          console.log(`Found Msuk at [${row}][${col}]`);
-        }
-        if (cellStr.includes('kluar')) {
-          foundKluar = true;
-          console.log(`Found Kluar at [${row}][${col}]`);
-        }
-      }
-    }
-    
-    if (foundMsuk && foundKluar) {
-      subHeaderRow = row;
-      console.log(`Found sub-header row at ${row}`);
-      break;
-    }
-  }
-  
-  if (subHeaderRow === -1) {
-    console.log('Could not find sub-header row with Msuk/Kluar');
-    return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
-  }
-  
-  // Now find the actual date row (should be right after sub-header)
-  // Look more broadly in the next several rows after sub-header
-  console.log(`Searching for date row starting from row ${subHeaderRow + 1}`);
-  
-  for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 20); row++) {
-    const rowData = data[row] || [];
-    console.log(`Checking row ${row} for dates:`, rowData.slice(0, 20));
+    console.log(`\n=== Checking row ${row} for dates ===`);
+    console.log(`Row ${row} data:`, rowData.slice(0, 30));
     
     let foundDatesInRow = 0;
     const tempDateColumns: Array<{ col: number; day: number }> = [];
     
+    // Check each cell in this row for date patterns
     for (let col = 0; col < rowData.length; col++) {
       const cell = rowData[col];
       if (cell) {
         const cellStr = cell.toString().trim();
-        console.log(`Checking cell [${row}][${col}]: "${cellStr}"`);
+        console.log(`  Cell [${row}][${col}]: "${cellStr}"`);
         
-        // Look for date patterns - be more flexible
-        // Try patterns like "01 Ka", "1 Se", "02 Ju", etc.
-        let dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{0,2}$/);
+        // Look for date patterns like "01 Ka", "02 Se", "03 Ra", etc.
+        // Also try patterns like "1", "2", "3" or "01", "02", "03"
+        let dayMatch = null;
         
-        // Also try just pure numbers
+        // Pattern 1: "01 Ka" format
+        dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{0,2}$/);
+        
+        // Pattern 2: Just numbers
         if (!dayMatch && /^\d{1,2}$/.test(cellStr)) {
           dayMatch = [cellStr, cellStr];
         }
         
-        // Also try pattern like "01Ka" without space
+        // Pattern 3: "01Ka" without space
         if (!dayMatch) {
           dayMatch = cellStr.match(/^(\d{1,2})[A-Za-z]{0,2}$/);
         }
         
         if (dayMatch) {
           const day = parseInt(dayMatch[1]);
+          console.log(`    Parsed day: ${day} from "${cellStr}"`);
+          
           if (day >= 1 && day <= 31) {
             tempDateColumns.push({ col, day });
             foundDatesInRow++;
-            console.log(`Found date: day ${day} at [${row}][${col}] from "${cellStr}"`);
+            console.log(`    ✓ Valid date found: day ${day} at column ${col}`);
           }
         }
       }
     }
     
-    // If we found at least 3 dates, it's probably the date row
-    if (foundDatesInRow >= 3) {
+    console.log(`Row ${row}: Found ${foundDatesInRow} dates`);
+    
+    // If we found at least 5 dates, it's likely the date row
+    if (foundDatesInRow >= 5) {
       dateRow = row;
       dateColumns.push(...tempDateColumns);
-      console.log(`Found date row at ${row} with ${foundDatesInRow} dates`);
+      console.log(`✓ DATE ROW FOUND at row ${row} with ${foundDatesInRow} dates`);
+      console.log(`Date columns:`, tempDateColumns.slice(0, 10));
       break;
     }
   }
   
   if (dateRow === -1) {
-    console.log('Could not find date row - trying alternative approach');
+    console.log('❌ Could not find date row after extensive search');
+    // Let's try one more approach - look for any row with multiple small numbers
+    console.log('Trying fallback approach...');
     
-    // Alternative: look for any row with multiple number patterns
-    for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 20); row++) {
+    for (let row = subHeaderRow + 1; row < Math.min(data.length, subHeaderRow + 15); row++) {
       const rowData = data[row] || [];
       let numberCount = 0;
       const tempDateColumns: Array<{ col: number; day: number }> = [];
       
-      for (let col = 0; col < rowData.length; col++) {
+      for (let col = 0; col < Math.min(rowData.length, 40); col++) {
         const cell = rowData[col];
         if (cell) {
           const cellStr = cell.toString().trim();
-          // Look for any 1-2 digit numbers
+          // Look for any small numbers that could be dates
           if (/^\d{1,2}/.test(cellStr)) {
-            const num = parseInt(cellStr.match(/^(\d{1,2})/)[1]);
-            if (num >= 1 && num <= 31) {
-              tempDateColumns.push({ col, day: num });
-              numberCount++;
-              console.log(`Alternative: Found potential date ${num} at [${row}][${col}]`);
+            const numMatch = cellStr.match(/^(\d{1,2})/);
+            if (numMatch) {
+              const num = parseInt(numMatch[1]);
+              if (num >= 1 && num <= 31) {
+                tempDateColumns.push({ col, day: num });
+                numberCount++;
+              }
             }
           }
         }
       }
       
-      if (numberCount >= 3) {
+      if (numberCount >= 5) {
         dateRow = row;
         dateColumns.push(...tempDateColumns);
-        console.log(`Alternative: Found date row at ${row} with ${numberCount} dates`);
+        console.log(`✓ FALLBACK: Found date row at ${row} with ${numberCount} dates`);
         break;
       }
     }
   }
   
   if (dateRow === -1) {
-    console.log('Still could not find date row');
+    console.log('❌ FAILED: Still could not find date row');
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
-  // Set jam masuk and jam pulang rows to be the same as date row
-  // since data is in the same rows as dates, just different columns
+  // Set jam masuk and jam pulang rows
   jamMasukRow = dateRow;
   jamPulangRow = dateRow;
   
-  console.log(`Final structure: dateRow=${dateRow}, jamMasukRow=${jamMasukRow}, jamPulangRow=${jamPulangRow}, dateColumns=${dateColumns.length}`);
-  console.log('Date columns found:', dateColumns);
+  console.log(`\n=== FINAL RESULT ===`);
+  console.log(`Date row: ${dateRow}`);
+  console.log(`Jam masuk row: ${jamMasukRow}`);
+  console.log(`Jam pulang row: ${jamPulangRow}`);
+  console.log(`Total date columns found: ${dateColumns.length}`);
+  console.log(`First 10 date columns:`, dateColumns.slice(0, 10));
+  
   return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
 };
