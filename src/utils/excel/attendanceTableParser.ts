@@ -13,121 +13,84 @@ export const findAttendanceTable = (data: any[][]): {
   console.log('🔍 Looking for attendance table structure...');
   console.log('📊 Sheet has', data.length, 'rows');
   
-  // First, find the "Tgl/Hari" header or similar patterns
-  let dateHeaderRow = -1;
-  let dateHeaderCol = -1;
+  // Look for "Tgl/Hari" column or similar date indicators
+  let dateColumnIndex = -1;
+  let tableStartRow = -1;
   
-  for (let row = 0; row < Math.min(data.length, 20); row++) {
-    for (let col = 0; col < Math.min((data[row] || []).length, 50); col++) {
-      const cell = data[row] && data[row][col];
+  for (let row = 0; row < Math.min(data.length, 15); row++) {
+    const rowData = data[row] || [];
+    
+    for (let col = 0; col < Math.min(rowData.length, 10); col++) {
+      const cell = rowData[col];
       if (cell) {
         const cellStr = cell.toString().toLowerCase().trim();
         
-        // Look for various date header patterns
+        // Look for date column indicators
         if ((cellStr.includes('tgl') && cellStr.includes('hari')) ||
             cellStr.includes('tanggal') ||
-            (cellStr.includes('tgl') && cellStr.length < 10)) {
-          dateHeaderRow = row;
-          dateHeaderCol = col;
-          console.log(`📅 Found date header "${cell}" at [${row}][${col}]`);
+            (cellStr.includes('tgl') && cellStr.length < 8)) {
+          dateColumnIndex = col;
+          tableStartRow = row;
+          console.log(`📅 Found date column "${cell}" at [${row}][${col}]`);
           break;
         }
       }
     }
-    if (dateHeaderRow !== -1) break;
+    
+    if (dateColumnIndex !== -1) break;
   }
   
-  if (dateHeaderRow === -1) {
-    console.log('❌ Could not find date header');
+  if (dateColumnIndex === -1) {
+    console.log('❌ Could not find date column');
     return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
   }
   
-  // Look for the actual date row - should be 1-3 rows after the header
-  console.log(`🔍 Looking for date row starting from row ${dateHeaderRow + 1}`);
+  // Now scan down from the table start to find actual date entries
+  console.log(`🔍 Scanning for date entries starting from row ${tableStartRow + 1}`);
   
-  for (let row = dateHeaderRow + 1; row < Math.min(data.length, dateHeaderRow + 6); row++) {
+  for (let row = tableStartRow + 1; row < Math.min(data.length, tableStartRow + 40); row++) {
     const rowData = data[row] || [];
-    console.log(`\n=== 📋 Checking row ${row} for dates ===`);
-    console.log(`Row ${row} data (first 15):`, rowData.slice(0, 15));
+    const dateCell = rowData[dateColumnIndex];
     
-    let foundDatesInRow = 0;
-    const tempDateColumns: Array<{ col: number; day: number }> = [];
-    
-    // Start checking from the same column as the header, extend search range
-    for (let col = Math.max(0, dateHeaderCol - 2); col < Math.min(rowData.length, dateHeaderCol + 40); col++) {
-      const cell = rowData[col];
-      if (cell !== null && cell !== undefined && cell !== '') {
-        const cellStr = cell.toString().trim();
-        console.log(`  🔍 Cell [${row}][${col}]: "${cellStr}"`);
+    if (dateCell !== null && dateCell !== undefined && dateCell !== '') {
+      const cellStr = dateCell.toString().trim();
+      console.log(`🔍 Checking date cell [${row}][${dateColumnIndex}]: "${cellStr}"`);
+      
+      // Look for day patterns (01 Ka, 02 Ju, etc.)
+      let dayMatch = null;
+      let day = null;
+      
+      // Pattern 1: "01 Ka", "02 Ju" format
+      dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{0,3}$/);
+      if (dayMatch) {
+        day = parseInt(dayMatch[1]);
+      }
+      
+      // Pattern 2: Just numbers "01", "1", etc
+      if (!dayMatch && /^\d{1,2}$/.test(cellStr)) {
+        day = parseInt(cellStr);
+      }
+      
+      if (day !== null && day >= 1 && day <= 31) {
+        console.log(`✅ Found valid date entry: day ${day} at row ${row}`);
         
-        let dayMatch = null;
-        let day = null;
-        
-        // Pattern 1: "01 Ka" format (day + day abbreviation)
-        dayMatch = cellStr.match(/^(\d{1,2})\s*[A-Za-z]{0,3}$/);
-        if (dayMatch) {
-          day = parseInt(dayMatch[1]);
+        // This row contains date data, so we found our date structure
+        if (dateRow === -1) {
+          dateRow = row;
+          jamMasukRow = row;
+          jamPulangRow = row;
         }
         
-        // Pattern 2: Just numbers "01", "1", etc
-        if (!dayMatch && /^\d{1,2}$/.test(cellStr)) {
-          day = parseInt(cellStr);
-        }
-        
-        // Pattern 3: "01Ka" without space
-        if (!dayMatch) {
-          dayMatch = cellStr.match(/^(\d{1,2})[A-Za-z]{0,3}$/);
-          if (dayMatch) {
-            day = parseInt(dayMatch[1]);
-          }
-        }
-        
-        // Pattern 4: Mixed format like "1Se", "2Sel", etc
-        if (!dayMatch) {
-          dayMatch = cellStr.match(/^(\d{1,2})[A-Za-z]+$/);
-          if (dayMatch) {
-            day = parseInt(dayMatch[1]);
-          }
-        }
-        
-        if (day !== null) {
-          console.log(`    📅 Parsed day: ${day} from "${cellStr}"`);
-          
-          if (day >= 1 && day <= 31) {
-            tempDateColumns.push({ col, day });
-            foundDatesInRow++;
-            console.log(`    ✅ Valid date found: day ${day} at column ${col}`);
-          } else {
-            console.log(`    ❌ Invalid day: ${day}`);
-          }
-        }
+        // Add this as a date "column" (though it's actually a row in this format)
+        dateColumns.push({ col: dateColumnIndex, day });
       }
     }
-    
-    console.log(`📊 Row ${row}: Found ${foundDatesInRow} dates`);
-    
-    // If we found at least 3 dates, it's likely the date row
-    if (foundDatesInRow >= 3) {
-      dateRow = row;
-      dateColumns.push(...tempDateColumns);
-      console.log(`✅ DATE ROW FOUND at row ${row} with ${foundDatesInRow} dates`);
-      break;
-    }
   }
-  
-  if (dateRow === -1) {
-    console.log('❌ Could not find date row');
-    return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
-  }
-  
-  // Set jam masuk and jam pulang rows (data will be in rows after the date row)
-  jamMasukRow = dateRow;
-  jamPulangRow = dateRow;
   
   console.log(`\n🎉 FINAL RESULT:`);
   console.log(`📅 Date row: ${dateRow}`);
-  console.log(`📊 Total date columns found: ${dateColumns.length}`);
-  console.log(`📋 Date columns (first 10):`, dateColumns.slice(0, 10));
+  console.log(`📊 Total date entries found: ${dateColumns.length}`);
+  console.log(`📋 Date entries (first 10):`, dateColumns.slice(0, 10));
   
   return { dateRow, jamMasukRow, jamPulangRow, dateColumns };
 };

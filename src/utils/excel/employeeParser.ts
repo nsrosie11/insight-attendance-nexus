@@ -3,188 +3,145 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
   let nama = '';
   let departemen = '';
   
-  console.log('🔍 Looking for employee info in sheet...');
-  console.log('📋 First 15 rows of data:', data.slice(0, 15));
+  console.log('🔍 Looking for employee info in header structure...');
+  console.log('📋 First 10 rows of data:', data.slice(0, 10));
   
-  // Look for nama pattern in first 20 rows and first 25 columns
-  for (let row = 0; row < Math.min(data.length, 20); row++) {
-    for (let col = 0; col < Math.min((data[row] || []).length, 25); col++) {
-      const cell = data[row] && data[row][col];
-      if (cell) {
-        const cellStr = cell.toString().trim();
-        console.log(`🔍 Checking cell [${row}][${col}]: "${cellStr}"`);
-        
-        // Look for "Nama" keyword (case insensitive)
-        if (cellStr.toLowerCase().includes('nama')) {
-          console.log(`✅ Found "Nama" keyword at [${row}][${col}]`);
+  // Look for header structure in first 10 rows
+  for (let row = 0; row < Math.min(data.length, 10); row++) {
+    const rowData = data[row] || [];
+    console.log(`\n=== 📋 Checking row ${row} for employee header ===`);
+    console.log(`Row ${row} data:`, rowData.slice(0, 20));
+    
+    // Look for "Nama" header first to find the right row
+    let namaHeaderCol = -1;
+    for (let col = 0; col < Math.min(rowData.length, 30); col++) {
+      const cell = rowData[col];
+      if (cell && cell.toString().toLowerCase().trim() === 'nama') {
+        namaHeaderCol = col;
+        console.log(`✅ Found "Nama" header at [${row}][${col}]`);
+        break;
+      }
+    }
+    
+    if (namaHeaderCol !== -1) {
+      // Look for employee name in columns after the "Nama" header
+      for (let col = namaHeaderCol + 1; col < Math.min(rowData.length, namaHeaderCol + 10); col++) {
+        const nameCell = rowData[col];
+        if (nameCell && nameCell.toString().trim()) {
+          const nameStr = nameCell.toString().trim();
+          console.log(`🔍 Checking potential name: "${nameStr}" at [${row}][${col}]`);
           
-          // Check adjacent cells for the actual name - expanded search
-          const adjacentCells = [
-            { r: row, c: col + 1 }, // right
-            { r: row + 1, c: col }, // below
-            { r: row, c: col + 2 }, // 2 columns right
-            { r: row + 1, c: col + 1 }, // diagonal down-right
-            { r: row, c: col + 3 }, // 3 columns right
-            { r: row + 2, c: col }, // 2 rows below
-            { r: row - 1, c: col + 1 }, // diagonal up-right
-            { r: row + 1, c: col - 1 } // diagonal down-left
-          ];
-          
-          for (const adj of adjacentCells) {
-            if (adj.r >= data.length || adj.c >= (data[adj.r] || []).length) continue;
+          // Check if this looks like a name (not departemen or other text)
+          if (nameStr.length >= 3 && 
+              nameStr.length <= 25 && 
+              nameStr.match(/^[a-zA-Z\s\-\.]+$/) &&
+              !nameStr.toUpperCase().includes('RND') &&
+              !nameStr.toUpperCase().includes('OFFICE') &&
+              !nameStr.toLowerCase().includes('depart') &&
+              !nameStr.toLowerCase().includes('tanggal') &&
+              !nameStr.toLowerCase().includes('periode')) {
             
-            const adjCell = data[adj.r] && data[adj.r][adj.c];
-            if (adjCell && adjCell.toString().trim()) {
-              const adjStr = adjCell.toString().trim();
-              console.log(`🔍 Checking adjacent cell [${adj.r}][${adj.c}]: "${adjStr}"`);
-              
-              // Enhanced name validation - accept shorter names and more patterns
-              if (!adjStr.toLowerCase().includes('nama') && 
-                  !adjStr.toLowerCase().includes('dept') &&
-                  !adjStr.toLowerCase().includes('office') &&
-                  !adjStr.toLowerCase().includes('rnd') &&
-                  !adjStr.toLowerCase().includes('departemen') &&
-                  !adjStr.toLowerCase().includes('tanggal') &&
-                  !adjStr.toLowerCase().includes('hari') &&
-                  !adjStr.toLowerCase().includes('no') &&
-                  !adjStr.toLowerCase().includes('tgl') &&
-                  !adjStr.toLowerCase().includes('jam') &&
-                  !adjStr.toLowerCase().includes('masuk') &&
-                  !adjStr.toLowerCase().includes('pulang') &&
-                  !adjStr.toLowerCase().includes('kerja') &&
-                  !adjStr.toLowerCase().includes('absen') &&
-                  adjStr.length >= 2 && adjStr.length < 50 &&
-                  // Accept names with letters, spaces, and some special characters
-                  adjStr.match(/^[a-zA-Z\s\-\.]+$/)) {
-                nama = adjStr.toLowerCase(); // Convert to lowercase as per requirement
-                console.log(`✅ Found employee name: ${nama}`);
-                break;
+            nama = nameStr.toLowerCase();
+            console.log(`✅ Found employee name: "${nama}"`);
+            
+            // Look for department in the next row, same column
+            const deptRow = row + 1;
+            if (deptRow < data.length) {
+              const deptCell = data[deptRow] && data[deptRow][col];
+              if (deptCell) {
+                const deptStr = deptCell.toString().toUpperCase().trim();
+                console.log(`🔍 Checking department at [${deptRow}][${col}]: "${deptStr}"`);
+                
+                if (deptStr.includes('RND') || deptStr.includes('R&D')) {
+                  departemen = 'RND';
+                  console.log(`✅ Department: RND found`);
+                } else if (deptStr.includes('OFFICE')) {
+                  departemen = 'OFFICE';
+                  console.log(`✅ Department: OFFICE found`);
+                }
               }
             }
-          }
-          
-          if (nama) break;
-        }
-        
-        // Look for department patterns - more flexible search
-        if (cellStr.toLowerCase().includes('dept') || 
-            cellStr.toLowerCase().includes('departemen') ||
-            cellStr.toLowerCase().includes('divisi') ||
-            cellStr.toLowerCase().includes('bagian') ||
-            cellStr.toLowerCase().includes('unit')) {
-          console.log(`✅ Found department keyword at [${row}][${col}]`);
-          
-          // Check adjacent cells for department value - expanded search
-          const adjacentCells = [
-            { r: row, c: col + 1 }, // right
-            { r: row + 1, c: col }, // below
-            { r: row, c: col + 2 }, // 2 columns right
-            { r: row + 1, c: col + 1 }, // diagonal
-            { r: row, c: col - 1 }, // left
-            { r: row - 1, c: col }, // above
-            { r: row, c: col + 3 }, // 3 columns right
-            { r: row + 2, c: col } // 2 rows below
-          ];
-          
-          for (const adj of adjacentCells) {
-            if (adj.r >= data.length || adj.c >= (data[adj.r] || []).length) continue;
             
-            const adjCell = data[adj.r] && data[adj.r][adj.c];
-            if (adjCell) {
-              const adjStr = adjCell.toString().toUpperCase().trim();
-              console.log(`🔍 Checking department value: "${adjStr}"`);
-              if (adjStr.includes('RND') || adjStr.includes('R&D') || adjStr.includes('R & D')) {
-                departemen = 'RND';
-                console.log(`✅ Department: RND found`);
-                break;
-              } else if (adjStr.includes('OFFICE') || adjStr.includes('KANTOR') || adjStr.includes('ADMIN')) {
-                departemen = 'OFFICE';
-                console.log(`✅ Department: OFFICE found`);
-                break;
-              }
+            // If we found both name and department, we're done
+            if (nama && departemen) {
+              break;
             }
           }
         }
       }
+      
+      if (nama && departemen) {
+        break;
+      }
     }
-    
-    if (nama && departemen) break;
   }
   
-  // Alternative approach: scan entire sheet for potential names if not found with "Nama" keyword
+  // Alternative search: look for potential names in header-like positions (first few rows)
   if (!nama) {
-    console.log('❌ No employee name found with "Nama" keyword, trying comprehensive scan...');
+    console.log('❌ No employee name found with "Nama" keyword, trying header scan...');
     
-    for (let row = 0; row < Math.min(data.length, 15); row++) {
-      for (let col = 0; col < Math.min((data[row] || []).length, 20); col++) {
-        const cell = data[row] && data[row][col];
-        if (cell) {
+    for (let row = 0; row < Math.min(data.length, 8); row++) {
+      const rowData = data[row] || [];
+      
+      for (let col = 5; col < Math.min(rowData.length, 25); col++) {
+        const cell = rowData[col];
+        if (cell && cell.toString().trim()) {
           const cellStr = cell.toString().trim();
           
-          // Look for potential names - more inclusive criteria
+          // Look for potential names in header positions
           if (cellStr.length >= 3 && 
-              cellStr.length <= 25 && 
+              cellStr.length <= 20 && 
               cellStr.match(/^[a-zA-Z\s\-\.]+$/) &&
+              !cellStr.toUpperCase().includes('RND') &&
+              !cellStr.toUpperCase().includes('OFFICE') &&
               !cellStr.toLowerCase().includes('nama') &&
-              !cellStr.toLowerCase().includes('dept') &&
-              !cellStr.toLowerCase().includes('office') &&
-              !cellStr.toLowerCase().includes('rnd') &&
+              !cellStr.toLowerCase().includes('depart') &&
               !cellStr.toLowerCase().includes('tanggal') &&
-              !cellStr.toLowerCase().includes('hari') &&
-              !cellStr.toLowerCase().includes('jam') &&
+              !cellStr.toLowerCase().includes('periode') &&
               !cellStr.toLowerCase().includes('masuk') &&
               !cellStr.toLowerCase().includes('pulang') &&
-              !cellStr.toLowerCase().includes('kerja') &&
+              !cellStr.toLowerCase().includes('jam') &&
+              !cellStr.toLowerCase().includes('lembur') &&
+              !cellStr.toLowerCase().includes('terlambat') &&
               !cellStr.toLowerCase().includes('absen') &&
+              !cellStr.toLowerCase().includes('ijin') &&
               !cellStr.toLowerCase().includes('tgl') &&
-              !cellStr.toLowerCase().includes('no') &&
-              !cellStr.toLowerCase().includes('departemen') &&
-              !cellStr.toLowerCase().includes('divisi') &&
-              !cellStr.toLowerCase().includes('total') &&
-              !cellStr.toLowerCase().includes('standar') &&
-              !cellStr.toLowerCase().includes('aktual') &&
-              !cellStr.toLowerCase().includes('kali') &&
-              !cellStr.toLowerCase().includes('mnt') &&
-              !cellStr.toLowerCase().includes('hadir') &&
-              !cellStr.toLowerCase().includes('rekap') &&
-              // Check if it's not a number or date
+              !cellStr.toLowerCase().includes('hari') &&
               !cellStr.match(/^\d+$/) &&
-              !cellStr.match(/^\d{2,4}\/\d{1,2}\/\d{1,2}/) &&
-              !cellStr.match(/^\d{1,2}:\d{2}/)) {
+              !cellStr.match(/^\d{2}:\d{2}/)) {
             
-            nama = cellStr.toLowerCase(); // Convert to lowercase as per requirement
-            console.log(`✅ Found potential employee name: ${nama} at [${row}][${col}]`);
-            break;
+            nama = cellStr.toLowerCase();
+            console.log(`✅ Found potential employee name: "${nama}" at [${row}][${col}]`);
+            
+            // Look for department in the next row, same column
+            const deptRow = row + 1;
+            if (deptRow < data.length) {
+              const deptCell = data[deptRow] && data[deptRow][col];
+              if (deptCell) {
+                const deptStr = deptCell.toString().toUpperCase().trim();
+                console.log(`🔍 Checking department at [${deptRow}][${col}]: "${deptStr}"`);
+                
+                if (deptStr.includes('RND') || deptStr.includes('R&D')) {
+                  departemen = 'RND';
+                  console.log(`✅ Department: RND found`);
+                } else if (deptStr.includes('OFFICE')) {
+                  departemen = 'OFFICE';
+                  console.log(`✅ Department: OFFICE found`);
+                }
+              }
+            }
+            
+            // If we found both name and department, we're done
+            if (nama && departemen) {
+              break;
+            }
           }
         }
       }
       
-      if (nama) break;
-    }
-  }
-  
-  // Alternative department search - scan for standalone RND/Office patterns
-  if (!departemen) {
-    console.log('❌ No department found with keyword, scanning for RND/Office patterns...');
-    
-    for (let row = 0; row < Math.min(data.length, 20); row++) {
-      for (let col = 0; col < Math.min((data[row] || []).length, 25); col++) {
-        const cell = data[row] && data[row][col];
-        if (cell) {
-          const cellStr = cell.toString().toUpperCase().trim();
-          if (cellStr === 'RND' || cellStr === 'R&D' || cellStr === 'R & D') {
-            departemen = 'RND';
-            console.log(`✅ Found department: RND at [${row}][${col}]`);
-            break;
-          } else if (cellStr === 'OFFICE' || cellStr === 'KANTOR' || cellStr === 'ADMIN') {
-            departemen = 'OFFICE';
-            console.log(`✅ Found department: OFFICE at [${row}][${col}]`);
-            break;
-          }
-        }
+      if (nama && departemen) {
+        break;
       }
-      
-      if (departemen) break;
     }
   }
   

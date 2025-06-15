@@ -20,7 +20,7 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     
     console.log(`👤 Found employee info:`, employeeInfo);
     
-    // Find attendance table structure
+    // Find attendance table structure - look for date column with daily entries
     const { dateRow, dateColumns } = findAttendanceTable(data);
     
     if (dateRow === -1 || dateColumns.length === 0) {
@@ -28,39 +28,51 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
       return parsedData;
     }
     
-    console.log(`✅ Found attendance table structure:`, {
-      dateRow,
-      dateColumnsCount: dateColumns.length
-    });
+    console.log(`✅ Found attendance table with ${dateColumns.length} date entries starting at row ${dateRow}`);
     
-    // Process each date column
-    for (const { col, day } of dateColumns) {
+    // Process each date entry (now these are rows, not columns)
+    for (const { col: dateCol, day } of dateColumns) {
       const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       
-      console.log(`\n📅 ========== Processing date ${tanggal} (day ${day}) in column ${col} ==========`);
+      console.log(`\n📅 ========== Processing date ${tanggal} (day ${day}) ==========`);
       
-      // Look for jam masuk and jam pulang data in the rows below the date
+      // Find the row where this date is located
+      let dateRowIndex = -1;
+      for (let row = dateRow; row < Math.min(data.length, dateRow + 40); row++) {
+        const cell = data[row] && data[row][dateCol];
+        if (cell) {
+          const cellStr = cell.toString().trim();
+          const dayMatch = cellStr.match(/^(\d{1,2})/);
+          if (dayMatch && parseInt(dayMatch[1]) === day) {
+            dateRowIndex = row;
+            break;
+          }
+        }
+      }
+      
+      if (dateRowIndex === -1) {
+        console.log(`❌ Could not find row for day ${day}`);
+        continue;
+      }
+      
+      console.log(`📍 Found day ${day} at row ${dateRowIndex}`);
+      
+      // Look for jam masuk and jam pulang in the same row, different columns
       let jamMasuk: string | null = null;
       let jamPulang: string | null = null;
       let isAbsen = false;
       
-      // Search in multiple rows after the date row for time data - expanded search
-      const searchRows = [];
-      for (let i = 1; i <= 15; i++) { // Increased search range
-        searchRows.push(dateRow + i);
-      }
+      const rowData = data[dateRowIndex] || [];
+      console.log(`📋 Row ${dateRowIndex} data:`, rowData.slice(0, 15));
       
-      console.log(`🔍 Will search for time data in rows:`, searchRows);
-      
-      for (const searchRow of searchRows) {
-        if (searchRow >= data.length) continue;
-        
-        const cell = data[searchRow] && data[searchRow][col];
+      // Look through the row for time data (typically in columns after the date)
+      for (let col = dateCol + 1; col < Math.min(rowData.length, dateCol + 10); col++) {
+        const cell = rowData[col];
         if (cell && cell.toString().trim()) {
           const cellValue = cell.toString().trim();
-          console.log(`  📋 Checking [${searchRow}][${col}]: "${cellValue}"`);
+          console.log(`  📋 Checking [${dateRowIndex}][${col}]: "${cellValue}"`);
           
-          // Check for absence indicators first
+          // Check for absence indicators
           const cellLower = cellValue.toLowerCase();
           if (cellLower.includes('absen') || cellLower.includes('ijin') || 
               cellLower.includes('sakit') || cellLower.includes('cuti') ||
@@ -77,7 +89,7 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
           if (parsedTime) {
             const timeHour = parseInt(parsedTime.split(':')[0]);
             
-            // Enhanced logic for determining jam masuk vs jam pulang
+            // Logic for determining jam masuk vs jam pulang
             if (timeHour < 12 && !jamMasuk) {
               jamMasuk = parsedTime;
               console.log(`  ✅ Found jam masuk: ${jamMasuk}`);
@@ -90,59 +102,6 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
             } else if (!jamPulang) {
               jamPulang = parsedTime;
               console.log(`  ✅ Found jam pulang (fallback): ${jamPulang}`);
-            }
-          }
-        }
-        
-        // Also check adjacent columns for jam pulang if we found jam masuk - expanded search
-        if (jamMasuk && !jamPulang) {
-          for (let adjCol = col + 1; adjCol <= col + 5; adjCol++) { // Increased search range
-            const adjCell = data[searchRow] && data[searchRow][adjCol];
-            if (adjCell && adjCell.toString().trim()) {
-              const adjCellValue = adjCell.toString().trim();
-              const adjCellLower = adjCellValue.toLowerCase();
-              
-              // Skip absence indicators
-              if (adjCellLower.includes('absen') || adjCellLower.includes('ijin') || 
-                  adjCellLower.includes('sakit') || adjCellLower.includes('cuti') ||
-                  adjCellLower === '-' || adjCellLower.includes('tidak') ||
-                  adjCellLower.includes('alfa') || adjCellLower.includes('alpa')) {
-                continue;
-              }
-              
-              const parsedAdjTime = parseTime(adjCellValue);
-              if (parsedAdjTime && parsedAdjTime !== jamMasuk) {
-                jamPulang = parsedAdjTime;
-                console.log(`  ✅ Found jam pulang in adjacent column: ${jamPulang} at [${searchRow}][${adjCol}]`);
-                break;
-              }
-            }
-          }
-        }
-        
-        // Also check previous columns for jam masuk if we found jam pulang
-        if (jamPulang && !jamMasuk) {
-          for (let adjCol = col - 1; adjCol >= col - 3; adjCol--) {
-            if (adjCol < 0) continue;
-            const adjCell = data[searchRow] && data[searchRow][adjCol];
-            if (adjCell && adjCell.toString().trim()) {
-              const adjCellValue = adjCell.toString().trim();
-              const adjCellLower = adjCellValue.toLowerCase();
-              
-              // Skip absence indicators
-              if (adjCellLower.includes('absen') || adjCellLower.includes('ijin') || 
-                  adjCellLower.includes('sakit') || adjCellLower.includes('cuti') ||
-                  adjCellLower === '-' || adjCellLower.includes('tidak') ||
-                  adjCellLower.includes('alfa') || adjCellLower.includes('alpa')) {
-                continue;
-              }
-              
-              const parsedAdjTime = parseTime(adjCellValue);
-              if (parsedAdjTime && parsedAdjTime !== jamPulang) {
-                jamMasuk = parsedAdjTime;
-                console.log(`  ✅ Found jam masuk in previous column: ${jamMasuk} at [${searchRow}][${adjCol}]`);
-                break;
-              }
             }
           }
         }
