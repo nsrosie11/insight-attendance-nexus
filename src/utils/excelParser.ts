@@ -30,23 +30,42 @@ export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, s
       
       console.log(`\n🔍 ========== Processing sheet: ${sheetName} ==========`);
       
-      // Parse sheet data
+      // Parse sheet data with multiple methods for robustness
       let data: any[][] = [];
       try {
+        // Method 1: Standard parsing
         data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as any[][];
-        console.log(`📊 Parsed ${data.length} rows x ${(data[0] || []).length} columns`);
+        console.log(`📊 Method 1: Parsed ${data.length} rows`);
       } catch (error) {
-        console.log('❌ Failed to parse sheet:', error);
+        console.log('❌ Method 1 failed, trying alternative parsing:', error);
+        try {
+          // Method 2: Raw parsing
+          data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' }) as any[][];
+          console.log(`📊 Method 2: Parsed ${data.length} rows`);
+        } catch (error2) {
+          console.log('❌ Method 2 also failed:', error2);
+          continue;
+        }
+      }
+      
+      // Ensure we have meaningful data
+      if (data.length === 0) {
+        console.log(`❌ No data found in sheet ${sheetName}`);
         continue;
       }
       
-      // Show sample of parsed data
+      // Filter out completely empty rows
+      data = data.filter(row => row && row.some(cell => cell && cell.toString().trim() !== ''));
+      
+      console.log(`📊 After filtering empty rows: ${data.length} rows`);
+      
+      // Show sample of parsed data for debugging
       console.log('\n=== 📋 PARSED DATA SAMPLE ===');
-      for (let row = 0; row < Math.min(5, data.length); row++) {
+      for (let row = 0; row < Math.min(8, data.length); row++) {
         const rowData = data[row] || [];
         if (rowData.length > 0) {
           const cellsInfo = [];
-          for (let col = 0; col < Math.min(15, rowData.length); col++) {
+          for (let col = 0; col < Math.min(20, rowData.length); col++) {
             const cell = rowData[col];
             if (cell && cell.toString().trim()) {
               cellsInfo.push(`[${col}]:"${cell.toString().trim()}"`);
@@ -58,26 +77,34 @@ export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, s
         }
       }
       
-      if (data.length === 0) {
-        console.log(`❌ No data found in sheet ${sheetName}`);
+      if (data.length < 3) {
+        console.log(`❌ Sheet ${sheetName} has insufficient data (${data.length} rows)`);
         continue;
       }
       
       // Use flexible parser
       const sheetData = parseFlexibleAttendance(data, sheetName, selectedMonth, selectedYear);
-      allParsedData.push(...sheetData);
+      
+      if (sheetData.length > 0) {
+        allParsedData.push(...sheetData);
+        console.log(`✅ Successfully parsed ${sheetData.length} records from ${sheetName}`);
+      } else {
+        console.log(`⚠️ No valid attendance data found in ${sheetName}`);
+      }
       
     } catch (error) {
       console.error(`❌ Error parsing sheet ${sheetName}:`, error);
+      // Continue with next sheet instead of stopping completely
       continue;
     }
   }
+  
+  console.log(`\n🎉 FINAL RESULT: ${allParsedData.length} total records from ${sheetsToProcess.length} sheets`);
   
   if (allParsedData.length === 0) {
     throw new Error('Tidak ada data valid yang ditemukan dalam sheet yang diproses. Pastikan format Excel sesuai dengan struktur yang diharapkan.');
   }
   
-  console.log(`\n🎉 Total parsed data: ${allParsedData.length} records`);
   return allParsedData;
 };
 
