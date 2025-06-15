@@ -2,7 +2,7 @@
 import * as XLSX from 'xlsx';
 import { ExcelData } from '@/types/excel';
 import { shouldProcessSheet } from './excel/sheetValidator';
-import { parseFlexibleAttendance } from './excel/flexibleAttendanceParser';
+import { parseSimpleAttendance } from './excel/simpleAttendanceParser';
 
 export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, selectedYear: number): ExcelData[] => {
   const allParsedData: ExcelData[] = [];
@@ -30,60 +30,28 @@ export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, s
       
       console.log(`\n🔍 ========== Processing sheet: ${sheetName} ==========`);
       
-      // Parse sheet data with multiple methods for robustness
+      // Parse sheet data 
       let data: any[][] = [];
       try {
-        // Method 1: Standard parsing
+        // Use standard parsing
         data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as any[][];
-        console.log(`📊 Method 1: Parsed ${data.length} rows`);
+        console.log(`📊 Parsed ${data.length} rows`);
       } catch (error) {
-        console.log('❌ Method 1 failed, trying alternative parsing:', error);
-        try {
-          // Method 2: Raw parsing
-          data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' }) as any[][];
-          console.log(`📊 Method 2: Parsed ${data.length} rows`);
-        } catch (error2) {
-          console.log('❌ Method 2 also failed:', error2);
-          continue;
-        }
-      }
-      
-      // Ensure we have meaningful data
-      if (data.length === 0) {
-        console.log(`❌ No data found in sheet ${sheetName}`);
+        console.log('❌ Parsing failed:', error);
         continue;
       }
       
       // Filter out completely empty rows
       data = data.filter(row => row && row.some(cell => cell && cell.toString().trim() !== ''));
-      
-      console.log(`📊 After filtering empty rows: ${data.length} rows`);
-      
-      // Show sample of parsed data for debugging
-      console.log('\n=== 📋 PARSED DATA SAMPLE ===');
-      for (let row = 0; row < Math.min(8, data.length); row++) {
-        const rowData = data[row] || [];
-        if (rowData.length > 0) {
-          const cellsInfo = [];
-          for (let col = 0; col < Math.min(20, rowData.length); col++) {
-            const cell = rowData[col];
-            if (cell && cell.toString().trim()) {
-              cellsInfo.push(`[${col}]:"${cell.toString().trim()}"`);
-            }
-          }
-          if (cellsInfo.length > 0) {
-            console.log(`Row ${row.toString().padStart(2, '0')}: ${cellsInfo.join(', ')}`);
-          }
-        }
-      }
+      console.log(`📊 After filtering: ${data.length} rows`);
       
       if (data.length < 3) {
-        console.log(`❌ Sheet ${sheetName} has insufficient data (${data.length} rows)`);
+        console.log(`❌ Sheet ${sheetName} has insufficient data`);
         continue;
       }
       
-      // Use flexible parser
-      const sheetData = parseFlexibleAttendance(data, sheetName, selectedMonth, selectedYear);
+      // Use simple parser
+      const sheetData = parseSimpleAttendance(data, sheetName, selectedMonth, selectedYear);
       
       if (sheetData.length > 0) {
         allParsedData.push(...sheetData);
@@ -94,7 +62,6 @@ export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, s
       
     } catch (error) {
       console.error(`❌ Error parsing sheet ${sheetName}:`, error);
-      // Continue with next sheet instead of stopping completely
       continue;
     }
   }
