@@ -27,10 +27,10 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
       
       console.log(`\n📅 ========== Processing date ${tanggal} (day ${day} at col ${col}) ==========`);
       
-      // Find employee info for this column
-      const employeeInfo = findEmployeeInfo(data, col);
+      // Find employee info for this column - fixed to pass only data parameter
+      const employeeInfo = findEmployeeInfo(data);
       if (!employeeInfo) {
-        console.log(`❌ No employee info found for column ${col}`);
+        console.log(`❌ No employee info found for sheet ${sheetName}`);
         continue;
       }
       
@@ -99,17 +99,31 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
       
       // Additional validation to prevent invalid times
       if (jamMasuk) {
-        const [hours, minutes] = jamMasuk.split(':').map(Number);
-        if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0) {
-          console.log(`❌ Invalid jam_masuk detected: ${jamMasuk}, skipping`);
+        const timeParts = jamMasuk.split(':');
+        if (timeParts.length >= 2) {
+          const hours = parseInt(timeParts[0]);
+          const minutes = parseInt(timeParts[1]);
+          if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0 || isNaN(hours) || isNaN(minutes)) {
+            console.log(`❌ Invalid jam_masuk detected: ${jamMasuk}, skipping`);
+            validJamMasuk = null;
+          }
+        } else {
+          console.log(`❌ Invalid jam_masuk format: ${jamMasuk}, skipping`);
           validJamMasuk = null;
         }
       }
       
       if (jamPulang) {
-        const [hours, minutes] = jamPulang.split(':').map(Number);
-        if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0) {
-          console.log(`❌ Invalid jam_pulang detected: ${jamPulang}, skipping`);
+        const timeParts = jamPulang.split(':');
+        if (timeParts.length >= 2) {
+          const hours = parseInt(timeParts[0]);
+          const minutes = parseInt(timeParts[1]);
+          if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0 || isNaN(hours) || isNaN(minutes)) {
+            console.log(`❌ Invalid jam_pulang detected: ${jamPulang}, skipping`);
+            validJamPulang = null;
+          }
+        } else {
+          console.log(`❌ Invalid jam_pulang format: ${jamPulang}, skipping`);
           validJamPulang = null;
         }
       }
