@@ -2,9 +2,9 @@
 export const shouldProcessSheet = (sheetName: string, allSheetNames: string[]): boolean => {
   console.log(`Checking if sheet "${sheetName}" should be processed`);
   
-  // Skip "Log" sheet
-  if (sheetName.toLowerCase().includes('log')) {
-    console.log(`Skipping sheet "${sheetName}" - contains "log"`);
+  // Skip "Rekap" and "Log" sheets
+  if (sheetName.toLowerCase().includes('rekap') || sheetName.toLowerCase().includes('log')) {
+    console.log(`Skipping sheet "${sheetName}" - summary/log sheet`);
     return false;
   }
   
@@ -23,14 +23,6 @@ export const shouldProcessSheet = (sheetName: string, allSheetNames: string[]): 
       console.log(`Skipping sheet "${sheetName}" - number too low`);
       return false;
     }
-  }
-  
-  // Also process sheets that might contain employee names (fallback)
-  if (sheetName.length > 2 && sheetName.length < 20 && 
-      sheetName.match(/^[a-zA-Z\s]+$/) && 
-      !sheetName.toLowerCase().includes('sheet')) {
-    console.log(`Processing potential employee sheet "${sheetName}"`);
-    return true;
   }
   
   console.log(`Skipping sheet "${sheetName}" - doesn't match criteria`);

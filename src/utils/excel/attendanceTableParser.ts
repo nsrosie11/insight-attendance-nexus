@@ -13,100 +13,34 @@ export const findAttendanceTable = (data: any[][]): {
   console.log('🔍 Looking for attendance table structure...');
   console.log('📊 Sheet has', data.length, 'rows');
   
-  // Debug: Show raw data structure first
+  // Debug: Show more comprehensive raw data
   console.log('\n=== 📋 RAW DATA SAMPLE ===');
-  for (let row = 0; row < Math.min(20, data.length); row++) {
+  for (let row = 0; row < Math.min(30, data.length); row++) {
     const rowData = data[row] || [];
-    const cellsInfo = [];
-    for (let col = 0; col < Math.min(15, rowData.length); col++) {
-      const cell = rowData[col];
-      if (cell && cell.toString().trim()) {
-        cellsInfo.push(`[${row}][${col}]:"${cell.toString().trim()}"`);
+    if (rowData.length > 0) {
+      const cellsInfo = [];
+      for (let col = 0; col < Math.min(20, rowData.length); col++) {
+        const cell = rowData[col];
+        if (cell && cell.toString().trim()) {
+          cellsInfo.push(`[${col}]:"${cell.toString().trim()}"`);
+        }
       }
-    }
-    if (cellsInfo.length > 0) {
-      console.log(`Row ${row}: ${cellsInfo.join(', ')}`);
+      if (cellsInfo.length > 0) {
+        console.log(`Row ${row.toString().padStart(2, '0')}: ${cellsInfo.join(', ')}`);
+      }
     }
   }
   
-  // Step 1: Find employee columns by looking for name patterns in first few columns
-  console.log('\n=== 📋 Step 1: Finding employee columns ===');
+  // Step 1: Find date row by looking for sequential date numbers (1, 2, 3, etc)
+  console.log('\n=== 📋 Step 1: Finding date row ===');
   
-  // Check first 10 columns for employee information
-  for (let col = 0; col < Math.min(10, (data[0] || []).length); col++) {
-    console.log(`\n--- Checking column ${col} ---`);
-    
-    let hasName = false;
-    let hasDepartment = false;
-    
-    // Look in first 20 rows for employee info
-    for (let row = 0; row < Math.min(20, data.length); row++) {
-      const rowData = data[row] || [];
-      const cell = rowData[col];
-      
-      if (cell && cell.toString().trim()) {
-        const cellStr = cell.toString().trim();
-        const cellLower = cellStr.toLowerCase();
-        const cellUpper = cellStr.toUpperCase();
-        
-        console.log(`  [${row}][${col}]: "${cellStr}"`);
-        
-        // Check for department
-        if (cellUpper.includes('RND') || cellUpper.includes('R&D') || cellUpper.includes('OFFICE')) {
-          hasDepartment = true;
-          console.log(`    ✅ Found department: ${cellStr}`);
-        }
-        
-        // Check for name (should be a proper name, not header)
-        if (!hasName && 
-            cellStr.length >= 2 && 
-            cellStr.length <= 20 &&
-            !cellLower.includes('nama') &&
-            !cellLower.includes('name') &&
-            !cellLower.includes('employee') &&
-            !cellLower.includes('karyawan') &&
-            !cellLower.includes('jam') &&
-            !cellLower.includes('masuk') &&
-            !cellLower.includes('pulang') &&
-            !cellLower.includes('tanggal') &&
-            !cellLower.includes('date') &&
-            !cellLower.includes('hari') &&
-            !cellLower.includes('department') &&
-            !cellLower.includes('rnd') &&
-            !cellLower.includes('office') &&
-            !cellStr.match(/^\d+$/) &&
-            !cellStr.match(/\d{1,2}:\d{2}/) &&
-            !cellStr.match(/^\d{1,2}$/) &&
-            cellStr !== '-' &&
-            /[a-zA-Z]/.test(cellStr) &&
-            cellStr !== cellUpper) {
-          
-          hasName = true;
-          console.log(`    ✅ Found potential name: ${cellStr}`);
-        }
-      }
-    }
-    
-    if (hasName && hasDepartment) {
-      employeeColumns.push(col);
-      console.log(`✅ Employee column confirmed at ${col}`);
-    } else {
-      console.log(`❌ Column ${col} rejected - name: ${hasName}, dept: ${hasDepartment}`);
-    }
-  }
-  
-  console.log(`\n📊 Found ${employeeColumns.length} employee columns: [${employeeColumns.join(', ')}]`);
-  
-  // Step 2: Find date row by looking for sequential numbers
-  console.log('\n=== 📋 Step 2: Finding date row ===');
-  
-  for (let row = 15; row < Math.min(data.length, 40); row++) {
+  for (let row = 0; row < Math.min(data.length, 50); row++) {
     const rowData = data[row] || [];
+    let validDates = [];
     let consecutiveDates = 0;
     let maxConsecutive = 0;
-    let validDates = [];
     
-    console.log(`\nChecking row ${row} for dates...`);
+    console.log(`\nChecking row ${row} for date pattern...`);
     
     for (let col = 0; col < Math.min(50, rowData.length); col++) {
       const cell = rowData[col];
@@ -117,8 +51,8 @@ export const findAttendanceTable = (data: any[][]): {
         if (/^\d{1,2}$/.test(cellStr)) {
           const dayNum = parseInt(cellStr);
           if (dayNum >= 1 && dayNum <= 31) {
-            consecutiveDates++;
             validDates.push(dayNum);
+            consecutiveDates++;
             maxConsecutive = Math.max(maxConsecutive, consecutiveDates);
           } else {
             consecutiveDates = 0;
@@ -132,55 +66,134 @@ export const findAttendanceTable = (data: any[][]): {
     }
     
     console.log(`  Row ${row}: found ${validDates.length} valid dates, max consecutive: ${maxConsecutive}`);
-    console.log(`  Sample dates: [${validDates.slice(0, 10).join(', ')}${validDates.length > 10 ? '...' : ''}]`);
+    console.log(`  Sample dates: [${validDates.slice(0, 15).join(', ')}${validDates.length > 15 ? '...' : ''}]`);
     
-    // If we found enough dates, this is our date row
-    if (validDates.length >= 8 && maxConsecutive >= 5) {
+    // If we found enough consecutive dates, this is our date row
+    if (validDates.length >= 10 && maxConsecutive >= 5) {
       dateRow = row;
       console.log(`✅ Date row found at ${row}`);
       break;
     }
   }
   
-  // Step 3: Find jam masuk/pulang rows
-  if (dateRow !== -1) {
-    console.log('\n=== 📋 Step 3: Finding jam masuk/pulang rows ===');
+  if (dateRow === -1) {
+    console.log('❌ Could not find date row');
+    return { dateRow, jamMasukRow, jamPulangRow, employeeColumns };
+  }
+  
+  // Step 2: Find employee columns by looking in the first few columns for employee cards
+  console.log('\n=== 📋 Step 2: Finding employee columns ===');
+  
+  // Look in first 5 columns for employee information (usually columns 0, 1, 2)
+  for (let col = 0; col < Math.min(5, (data[0] || []).length); col++) {
+    console.log(`\n--- Checking column ${col} for employee info ---`);
     
-    // Look around the date row for time-related labels
-    for (let searchRow = dateRow - 3; searchRow <= dateRow + 5; searchRow++) {
-      if (searchRow < 0 || searchRow >= data.length || searchRow === dateRow) continue;
+    let hasName = false;
+    let hasDepartment = false;
+    let nameRow = -1;
+    let deptRow = -1;
+    
+    // Look in rows before the date row for employee info
+    for (let row = 0; row < Math.min(dateRow, 30); row++) {
+      const rowData = data[row] || [];
+      const cell = rowData[col];
       
-      const searchRowData = data[searchRow] || [];
-      
-      // Check first few columns for labels
-      for (let searchCol = 0; searchCol < Math.min(10, searchRowData.length); searchCol++) {
-        const searchCell = searchRowData[searchCol];
-        if (searchCell && searchCell.toString().trim()) {
-          const searchStr = searchCell.toString().toLowerCase().trim();
+      if (cell && cell.toString().trim()) {
+        const cellStr = cell.toString().trim();
+        const cellLower = cellStr.toLowerCase();
+        const cellUpper = cellStr.toUpperCase();
+        
+        console.log(`  [${row}][${col}]: "${cellStr}"`);
+        
+        // Check for department (RND/OFFICE)
+        if (cellUpper.includes('RND') || cellUpper.includes('R&D') || cellUpper.includes('OFFICE')) {
+          hasDepartment = true;
+          deptRow = row;
+          console.log(`    ✅ Found department: ${cellStr} at row ${row}`);
+        }
+        
+        // Check for employee name (should be a proper name, not header/label)
+        if (!hasName && 
+            cellStr.length >= 2 && 
+            cellStr.length <= 25 &&
+            !cellLower.includes('nama') &&
+            !cellLower.includes('name') &&
+            !cellLower.includes('employee') &&
+            !cellLower.includes('karyawan') &&
+            !cellLower.includes('jam') &&
+            !cellLower.includes('masuk') &&
+            !cellLower.includes('pulang') &&
+            !cellLower.includes('tanggal') &&
+            !cellLower.includes('date') &&
+            !cellLower.includes('hari') &&
+            !cellLower.includes('department') &&
+            !cellLower.includes('rnd') &&
+            !cellLower.includes('office') &&
+            !cellLower.includes('absen') &&
+            !cellStr.match(/^\d+$/) &&
+            !cellStr.match(/\d{1,2}:\d{2}/) &&
+            !cellStr.match(/^\d{1,2}$/) &&
+            cellStr !== '-' &&
+            cellStr !== '' &&
+            /[a-zA-Z]/.test(cellStr) &&
+            cellStr !== cellUpper &&
+            cellStr !== cellLower) {
           
-          if ((searchStr.includes('masuk') || searchStr.includes('in')) && jamMasukRow === -1) {
-            jamMasukRow = searchRow;
-            console.log(`✅ Found jam masuk at row ${searchRow} (label: "${searchCell}")`);
-          } else if ((searchStr.includes('pulang') || searchStr.includes('out')) && jamPulangRow === -1) {
-            jamPulangRow = searchRow;
-            console.log(`✅ Found jam pulang at row ${searchRow} (label: "${searchCell}")`);
-          }
+          hasName = true;
+          nameRow = row;
+          console.log(`    ✅ Found potential name: "${cellStr}" at row ${row}`);
         }
       }
     }
     
-    // If not found by labels, use default positions
-    if (jamMasukRow === -1) {
-      jamMasukRow = dateRow + 1;
-      console.log(`📍 Setting default jam masuk row to ${jamMasukRow}`);
-    }
-    if (jamPulangRow === -1) {
-      jamPulangRow = dateRow + 2;
-      console.log(`📍 Setting default jam pulang row to ${jamPulangRow}`);
+    // If we found both name and department in this column, it's an employee column
+    if (hasName && hasDepartment) {
+      employeeColumns.push(col);
+      console.log(`✅ Employee column confirmed at ${col} (name at row ${nameRow}, dept at row ${deptRow})`);
+    } else {
+      console.log(`❌ Column ${col} rejected - name: ${hasName}, dept: ${hasDepartment}`);
     }
   }
   
-  console.log(`\n🎉 FINAL RESULT:`);
+  console.log(`\n📊 Found ${employeeColumns.length} employee columns: [${employeeColumns.join(', ')}]`);
+  
+  // Step 3: Find jam masuk/pulang rows around the date row
+  console.log('\n=== 📋 Step 3: Finding jam masuk/pulang rows ===');
+  
+  // Look for time-related labels in rows around the date row
+  for (let searchRow = dateRow + 1; searchRow <= dateRow + 5 && searchRow < data.length; searchRow++) {
+    const searchRowData = data[searchRow] || [];
+    
+    // Check first few columns for time labels
+    for (let searchCol = 0; searchCol < Math.min(8, searchRowData.length); searchCol++) {
+      const searchCell = searchRowData[searchCol];
+      if (searchCell && searchCell.toString().trim()) {
+        const searchStr = searchCell.toString().toLowerCase().trim();
+        
+        console.log(`  Checking [${searchRow}][${searchCol}]: "${searchCell}" for time labels`);
+        
+        if ((searchStr.includes('masuk') || searchStr.includes('in') || searchStr.includes('datang')) && jamMasukRow === -1) {
+          jamMasukRow = searchRow;
+          console.log(`✅ Found jam masuk at row ${searchRow} (label: "${searchCell}")`);
+        } else if ((searchStr.includes('pulang') || searchStr.includes('out') || searchStr.includes('keluar')) && jamPulangRow === -1) {
+          jamPulangRow = searchRow;
+          console.log(`✅ Found jam pulang at row ${searchRow} (label: "${searchCell}")`);
+        }
+      }
+    }
+  }
+  
+  // If not found by labels, use default positions relative to date row
+  if (jamMasukRow === -1) {
+    jamMasukRow = dateRow + 1;
+    console.log(`📍 Setting default jam masuk row to ${jamMasukRow} (dateRow + 1)`);
+  }
+  if (jamPulangRow === -1) {
+    jamPulangRow = dateRow + 2;
+    console.log(`📍 Setting default jam pulang row to ${jamPulangRow} (dateRow + 2)`);
+  }
+  
+  console.log(`\n🎉 FINAL ATTENDANCE TABLE STRUCTURE:`);
   console.log(`📅 Date row: ${dateRow}`);
   console.log(`⏰ Jam masuk row: ${jamMasukRow}`);
   console.log(`🏃 Jam pulang row: ${jamPulangRow}`);

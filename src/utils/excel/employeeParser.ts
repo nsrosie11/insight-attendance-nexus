@@ -5,8 +5,8 @@ export const findEmployeeInfo = (data: any[][], columnIndex: number): { nama: st
   let employeeName = '';
   let department = '';
   
-  // Look for employee name and department in the first 20 rows
-  for (let row = 0; row < Math.min(data.length, 20); row++) {
+  // Look for employee name and department in the first 30 rows
+  for (let row = 0; row < Math.min(data.length, 30); row++) {
     const rowData = data[row] || [];
     const cell = rowData[columnIndex];
     
@@ -17,7 +17,7 @@ export const findEmployeeInfo = (data: any[][], columnIndex: number): { nama: st
       
       console.log(`  📋 [${row}][${columnIndex}]: "${cellStr}"`);
       
-      // Check for department first
+      // Check for department first (RND or OFFICE)
       if (cellUpper.includes('RND') || cellUpper.includes('R&D')) {
         department = 'RND';
         console.log(`    ✅ Found RND department`);
@@ -28,10 +28,10 @@ export const findEmployeeInfo = (data: any[][], columnIndex: number): { nama: st
         continue;
       }
       
-      // Check for employee name
+      // Check for employee name (more flexible criteria)
       if (!employeeName && 
           cellStr.length >= 2 && 
-          cellStr.length <= 20 &&
+          cellStr.length <= 25 &&
           !cellLower.includes('nama') &&
           !cellLower.includes('name') &&
           !cellLower.includes('employee') &&
@@ -45,13 +45,16 @@ export const findEmployeeInfo = (data: any[][], columnIndex: number): { nama: st
           !cellLower.includes('department') &&
           !cellLower.includes('rnd') &&
           !cellLower.includes('office') &&
+          !cellLower.includes('absen') &&
+          !cellLower.includes('hadir') &&
           !cellStr.match(/^\d+$/) &&
           !cellStr.match(/\d{1,2}:\d{2}/) &&
           !cellStr.match(/^\d{1,2}$/) &&
           cellStr !== '-' &&
           cellStr !== '' &&
           /[a-zA-Z]/.test(cellStr) &&
-          cellStr !== cellUpper) {
+          cellStr !== cellUpper &&
+          cellStr !== cellLower) {
         
         employeeName = cellStr;
         console.log(`    ✅ Found employee name: "${employeeName}"`);
