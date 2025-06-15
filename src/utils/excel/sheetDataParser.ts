@@ -10,24 +10,8 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
   console.log(`\n🔍 =============== Processing sheet: ${sheetName} ===============`);
   console.log(`📊 Sheet dimensions: ${data.length} rows x ${(data[0] || []).length} columns`);
   
-  // Debug: Show first few rows and columns
-  console.log('📋 Sample data structure:');
-  for (let i = 0; i < Math.min(5, data.length); i++) {
-    const row = data[i] || [];
-    const sampleCells = [];
-    for (let j = 0; j < Math.min(10, row.length); j++) {
-      const cell = row[j];
-      if (cell && cell.toString().trim()) {
-        sampleCells.push(`[${i}][${j}]:"${cell.toString().trim()}"`);
-      }
-    }
-    if (sampleCells.length > 0) {
-      console.log(`  Row ${i}: ${sampleCells.join(', ')}`);
-    }
-  }
-  
   try {
-    // Find attendance table structure and employee columns
+    // Find attendance table structure
     const { dateRow, jamMasukRow, jamPulangRow, employeeColumns } = findAttendanceTable(data);
     
     if (dateRow === -1) {
@@ -40,27 +24,28 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
       return parsedData;
     }
     
-    console.log(`✅ Found attendance table structure with ${employeeColumns.length} employee columns`);
+    console.log(`\n✅ Found structure: dateRow=${dateRow}, jamMasuk=${jamMasukRow}, jamPulang=${jamPulangRow}`);
+    console.log(`✅ Employee columns: [${employeeColumns.join(', ')}]`);
     
     // Process each employee column
     for (const employeeCol of employeeColumns) {
       console.log(`\n👤 ========== Processing employee column ${employeeCol} ==========`);
       
-      // Get employee info for this column
+      // Get employee info
       const employeeInfo = findEmployeeInfo(data, employeeCol);
       if (!employeeInfo) {
         console.log(`❌ No employee info found for column ${employeeCol}`);
         continue;
       }
       
-      console.log(`✅ Found employee: ${employeeInfo.nama} (${employeeInfo.status})`);
+      console.log(`✅ Processing: ${employeeInfo.nama} (${employeeInfo.status})`);
       
-      // Find all date columns and process attendance
+      // Get date row data
       const dateRowData = data[dateRow] || [];
-      console.log(`📅 Date row has ${dateRowData.length} columns to check`);
+      console.log(`📅 Checking ${dateRowData.length} columns for dates...`);
       
-      // Process each potential date column
-      for (let dateCol = 0; dateCol < Math.min(dateRowData.length, 100); dateCol++) {
+      // Process each date column
+      for (let dateCol = 0; dateCol < Math.min(dateRowData.length, 50); dateCol++) {
         const dateCell = dateRowData[dateCol];
         if (dateCell && dateCell.toString().trim()) {
           const cellStr = dateCell.toString().trim();
@@ -71,9 +56,9 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
             if (day >= 1 && day <= 31) {
               const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
               
-              console.log(`\n📅 Processing date ${tanggal} (day ${day}) at column ${dateCol} for ${employeeInfo.nama}`);
+              console.log(`\n📅 Processing ${tanggal} (day ${day}) at dateCol ${dateCol}`);
               
-              // Get attendance data for this employee and date
+              // Get attendance data
               let jamMasuk: string | null = null;
               let jamPulang: string | null = null;
               let isAbsen = false;
@@ -83,22 +68,17 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
                 const jamMasukCell = data[jamMasukRow][dateCol];
                 if (jamMasukCell && jamMasukCell.toString().trim()) {
                   const cellValue = jamMasukCell.toString().trim();
-                  console.log(`  📋 Jam masuk [${jamMasukRow}][${dateCol}]: "${cellValue}"`);
+                  console.log(`  🕐 Jam masuk raw: "${cellValue}"`);
                   
-                  // Check for absence indicators
                   const cellLower = cellValue.toLowerCase();
                   if (cellLower.includes('absen') || cellLower.includes('ijin') || 
                       cellLower.includes('sakit') || cellLower.includes('cuti') ||
-                      cellLower.includes('libur') || cellLower === '-' ||
-                      cellLower.includes('tidak') || cellLower.includes('kosong') ||
-                      cellLower.includes('alfa') || cellLower.includes('alpa')) {
-                    console.log(`    🚫 Found absence indicator: ${cellValue}`);
+                      cellLower === '-' || cellLower.includes('libur')) {
                     isAbsen = true;
+                    console.log(`    🚫 Absence detected: ${cellValue}`);
                   } else {
                     jamMasuk = parseTime(cellValue);
-                    if (jamMasuk) {
-                      console.log(`    ✅ Parsed jam masuk: ${jamMasuk}`);
-                    }
+                    console.log(`    ✅ Parsed jam masuk: ${jamMasuk}`);
                   }
                 }
               }
@@ -108,34 +88,28 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
                 const jamPulangCell = data[jamPulangRow][dateCol];
                 if (jamPulangCell && jamPulangCell.toString().trim()) {
                   const cellValue = jamPulangCell.toString().trim();
-                  console.log(`  📋 Jam pulang [${jamPulangRow}][${dateCol}]: "${cellValue}"`);
+                  console.log(`  🕐 Jam pulang raw: "${cellValue}"`);
                   
-                  // Check for absence indicators
                   const cellLower = cellValue.toLowerCase();
                   if (cellLower.includes('absen') || cellLower.includes('ijin') || 
                       cellLower.includes('sakit') || cellLower.includes('cuti') ||
-                      cellLower.includes('libur') || cellLower === '-' ||
-                      cellLower.includes('tidak') || cellLower.includes('kosong') ||
-                      cellLower.includes('alfa') || cellLower.includes('alpa')) {
-                    console.log(`    🚫 Found absence indicator: ${cellValue}`);
+                      cellLower === '-' || cellLower.includes('libur')) {
                     isAbsen = true;
+                    console.log(`    🚫 Absence detected: ${cellValue}`);
                   } else {
                     jamPulang = parseTime(cellValue);
-                    if (jamPulang) {
-                      console.log(`    ✅ Parsed jam pulang: ${jamPulang}`);
-                    }
+                    console.log(`    ✅ Parsed jam pulang: ${jamPulang}`);
                   }
                 }
               }
               
-              // Only add data if there's meaningful attendance information
+              // Add data if there's any attendance info
               if (isAbsen || jamMasuk || jamPulang) {
-                // Calculate business logic
                 const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
                 const pulang_tercatat = jamPulang ? 
                   (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
                 
-                const formattedData: ExcelData = {
+                const attendanceData: ExcelData = {
                   nama: employeeInfo.nama,
                   status: employeeInfo.status,
                   tanggal,
@@ -145,10 +119,10 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
                   pulang_tercatat
                 };
                 
-                console.log(`✅ Added data for ${employeeInfo.nama} on ${tanggal}:`, formattedData);
-                parsedData.push(formattedData);
+                parsedData.push(attendanceData);
+                console.log(`✅ Added: ${employeeInfo.nama} on ${tanggal}`);
               } else {
-                console.log(`⚠️ Skipping ${tanggal} for ${employeeInfo.nama} - no attendance data`);
+                console.log(`⚠️ No attendance data for ${employeeInfo.nama} on ${tanggal}`);
               }
             }
           }
@@ -160,6 +134,6 @@ export const parseSheetData = (data: any[][], sheetName: string, selectedMonth: 
     console.error(`❌ Error parsing sheet ${sheetName}:`, error);
   }
   
-  console.log(`\n🎉 SUMMARY: Successfully parsed ${parsedData.length} entries for ${sheetName}`);
+  console.log(`\n🎉 Sheet ${sheetName} completed: ${parsedData.length} records`);
   return parsedData;
 };
