@@ -23,6 +23,13 @@ export const parseTime = (timeStr: string): string | null => {
     const totalMinutes = Math.round(decimal * 24 * 60);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
+    
+    // Validate hours and minutes
+    if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0) {
+      console.log(`    ❌ Invalid Excel time conversion: ${hours}:${minutes}`);
+      return null;
+    }
+    
     const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
     console.log(`    ✅ Parsed Excel decimal time: ${result}`);
     return result;
@@ -31,10 +38,17 @@ export const parseTime = (timeStr: string): string | null => {
   // Handle format HH:MM or HH:MM:SS
   const timeMatch = cleanTimeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (timeMatch) {
-    const hours = timeMatch[1].padStart(2, '0');
-    const minutes = timeMatch[2];
-    const seconds = timeMatch[3] || '00';
-    const result = `${hours}:${minutes}:${seconds}`;
+    const hours = parseInt(timeMatch[1]);
+    const minutes = parseInt(timeMatch[2]);
+    const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+    
+    // Validate time components
+    if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0 || seconds >= 60 || seconds < 0) {
+      console.log(`    ❌ Invalid time format: ${hours}:${minutes}:${seconds}`);
+      return null;
+    }
+    
+    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     console.log(`    ✅ Parsed time format HH:MM: ${result}`);
     return result;
   }
@@ -42,16 +56,27 @@ export const parseTime = (timeStr: string): string | null => {
   // Handle decimal time format (8.45 = 08:45, 8.5 = 08:30)
   const decimalMatch = cleanTimeStr.match(/^(\d{1,2})\.(\d{1,2})$/);
   if (decimalMatch) {
-    const hours = decimalMatch[1].padStart(2, '0');
-    let minutes = decimalMatch[2];
+    const hours = parseInt(decimalMatch[1]);
+    let minutes = parseInt(decimalMatch[2]);
+    
+    // Validate hours
+    if (hours >= 24 || hours < 0) {
+      console.log(`    ❌ Invalid decimal time hours: ${hours}`);
+      return null;
+    }
     
     // Convert decimal minutes properly
-    if (minutes.length === 1) {
-      minutes = (parseInt(minutes) * 6).toString(); // .5 = 30 minutes, .3 = 18 minutes
+    if (decimalMatch[2].length === 1) {
+      minutes = minutes * 6; // .5 = 30 minutes, .3 = 18 minutes
     }
-    minutes = minutes.padStart(2, '0');
     
-    const result = `${hours}:${minutes}:00`;
+    // Validate minutes
+    if (minutes >= 60 || minutes < 0) {
+      console.log(`    ❌ Invalid decimal time minutes: ${minutes}`);
+      return null;
+    }
+    
+    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
     console.log(`    ✅ Parsed decimal time: ${result}`);
     return result;
   }
@@ -59,8 +84,15 @@ export const parseTime = (timeStr: string): string | null => {
   // Handle simple hour format (8, 9, 10)
   const hourMatch = cleanTimeStr.match(/^\d{1,2}$/);
   if (hourMatch) {
-    const hour = hourMatch[0].padStart(2, '0');
-    const result = `${hour}:00:00`;
+    const hour = parseInt(hourMatch[0]);
+    
+    // Validate hour
+    if (hour >= 24 || hour < 0) {
+      console.log(`    ❌ Invalid hour format: ${hour}`);
+      return null;
+    }
+    
+    const result = `${hour.toString().padStart(2, '0')}:00:00`;
     console.log(`    ✅ Parsed hour format: ${result}`);
     return result;
   }
@@ -69,8 +101,14 @@ export const parseTime = (timeStr: string): string | null => {
   const timeWithTextMatch = cleanTimeStr.match(/(\d{1,2}):(\d{2})\s*([AP]M?)/i);
   if (timeWithTextMatch) {
     let hours = parseInt(timeWithTextMatch[1]);
-    const minutes = timeWithTextMatch[2];
+    const minutes = parseInt(timeWithTextMatch[2]);
     const period = timeWithTextMatch[3].toUpperCase();
+    
+    // Validate base values
+    if (minutes >= 60 || minutes < 0) {
+      console.log(`    ❌ Invalid AM/PM time minutes: ${minutes}`);
+      return null;
+    }
     
     // Convert 12-hour to 24-hour format
     if (period.includes('P') && hours !== 12) {
@@ -79,7 +117,13 @@ export const parseTime = (timeStr: string): string | null => {
       hours = 0;
     }
     
-    const result = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+    // Validate final hours
+    if (hours >= 24 || hours < 0) {
+      console.log(`    ❌ Invalid AM/PM time hours after conversion: ${hours}`);
+      return null;
+    }
+    
+    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
     console.log(`    ✅ Parsed time with AM/PM: ${result}`);
     return result;
   }
@@ -87,9 +131,16 @@ export const parseTime = (timeStr: string): string | null => {
   // Handle format with spaces or dots (8 . 30, 8 : 30)
   const spacedTimeMatch = cleanTimeStr.match(/(\d{1,2})\s*[.:]\s*(\d{2})/);
   if (spacedTimeMatch) {
-    const hours = spacedTimeMatch[1].padStart(2, '0');
-    const minutes = spacedTimeMatch[2];
-    const result = `${hours}:${minutes}:00`;
+    const hours = parseInt(spacedTimeMatch[1]);
+    const minutes = parseInt(spacedTimeMatch[2]);
+    
+    // Validate time components
+    if (hours >= 24 || hours < 0 || minutes >= 60 || minutes < 0) {
+      console.log(`    ❌ Invalid spaced time format: ${hours}:${minutes}`);
+      return null;
+    }
+    
+    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
     console.log(`    ✅ Parsed spaced time format: ${result}`);
     return result;
   }
