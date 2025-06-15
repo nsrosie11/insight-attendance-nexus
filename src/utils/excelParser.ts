@@ -2,7 +2,7 @@
 import * as XLSX from 'xlsx';
 import { ExcelData } from '@/types/excel';
 import { shouldProcessSheet } from './excel/sheetValidator';
-import { parseSimpleAttendance } from './excel/simpleAttendanceParser';
+import { parseBasicAttendance } from './excel/basicAttendanceParser';
 
 export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, selectedYear: number): ExcelData[] => {
   const allParsedData: ExcelData[] = [];
@@ -50,8 +50,8 @@ export const parseExcelData = (workbook: XLSX.WorkBook, selectedMonth: number, s
         continue;
       }
       
-      // Use simple parser
-      const sheetData = parseSimpleAttendance(data, sheetName, selectedMonth, selectedYear);
+      // Use basic parser
+      const sheetData = parseBasicAttendance(data, sheetName, selectedMonth, selectedYear);
       
       if (sheetData.length > 0) {
         allParsedData.push(...sheetData);
