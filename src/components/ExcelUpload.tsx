@@ -61,17 +61,45 @@ const ExcelUpload: React.FC = () => {
     setUploadStatus('idle');
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      console.log(`\n🚀 ========== STARTING EXCEL PARSING ==========`);
+      console.log(`📁 File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      console.log(`📅 Period: ${selectedMonth}/${selectedYear}`);
       
-      console.log('Available sheets:', workbook.SheetNames);
+      const arrayBuffer = await file.arrayBuffer();
+      console.log(`📦 ArrayBuffer size: ${arrayBuffer.byteLength} bytes`);
+      
+      // Try different workbook parsing options
+      let workbook: XLSX.WorkBook;
+      try {
+        // Method 1: Standard parsing
+        workbook = XLSX.read(arrayBuffer, { 
+          type: 'array',
+          cellText: false,
+          cellDates: true,
+          cellNF: false,
+          cellStyles: false
+        });
+        console.log('✅ Workbook parsed with Method 1');
+      } catch (error) {
+        console.log('❌ Method 1 failed, trying Method 2:', error);
+        // Method 2: More permissive parsing
+        workbook = XLSX.read(arrayBuffer, { 
+          type: 'array',
+          cellText: true,
+          cellDates: false,
+          raw: false
+        });
+        console.log('✅ Workbook parsed with Method 2');
+      }
+      
+      console.log(`📊 Workbook loaded with ${workbook.SheetNames.length} sheets:`, workbook.SheetNames);
       
       const parsed = parseExcelData(workbook, selectedMonth, selectedYear);
       
-      console.log('Final parsed data:', parsed);
+      console.log(`🎉 Final parsed data: ${parsed.length} records`);
       
       if (parsed.length === 0) {
-        throw new Error('Tidak ada data valid yang ditemukan dalam file');
+        throw new Error('Tidak ada data valid yang ditemukan dalam file. Pastikan file Excel memiliki format yang benar dengan sheet bernama angka (contoh: 14.15.17) dan berisi data absensi.');
       }
 
       setParsedData(parsed);
@@ -83,11 +111,11 @@ const ExcelUpload: React.FC = () => {
       });
 
     } catch (error: any) {
-      console.error('Error parsing file:', error);
+      console.error('❌ Error parsing file:', error);
       setUploadStatus('error');
       toast({
         title: "Parse gagal",
-        description: error.message || "Terjadi kesalahan saat memparse file",
+        description: error.message || "Terjadi kesalahan saat memparse file. Periksa console browser (F12) untuk detail lebih lanjut.",
         variant: "destructive"
       });
     } finally {
