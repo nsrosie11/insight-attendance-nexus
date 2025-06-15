@@ -5,75 +5,24 @@ export const parseFlexibleAttendance = (data: any[][], sheetName: string, select
   const results: any[] = [];
   
   try {
-    // Step 1: Find all potential employee info by scanning for Department + Name patterns
-    const employeeInfo: Array<{name: string; department: string; column: number}> = [];
-    
-    // Scan first 10 rows for employee patterns
-    for (let row = 0; row < Math.min(10, data.length); row++) {
+    // Show more detailed data structure first
+    console.log(`\n=== 📋 DETAILED SHEET STRUCTURE ===`);
+    for (let row = 0; row < Math.min(15, data.length); row++) {
       const rowData = data[row] || [];
-      
-      for (let col = 0; col < Math.min(50, rowData.length); col++) {
-        const cell = rowData[col];
-        if (!cell) continue;
-        
-        const cellStr = cell.toString().trim();
-        const cellLower = cellStr.toLowerCase();
-        
-        // Look for department indicators
-        if (cellLower.includes('departemen') || cellLower.includes('dept')) {
-          console.log(`📍 Found department label at [${row}][${col}]: ${cellStr}`);
-          
-          // Check next few cells in same row for department value
-          for (let nextCol = col + 1; nextCol < Math.min(col + 10, rowData.length); nextCol++) {
-            const nextCell = rowData[nextCol];
-            if (nextCell) {
-              const nextStr = nextCell.toString().trim();
-              if (nextStr.toUpperCase().includes('OFFICE') || nextStr.toUpperCase().includes('RND')) {
-                console.log(`📍 Found department value: ${nextStr} at [${row}][${nextCol}]`);
-                
-                // Look for name in nearby cells (same row or next few rows)
-                for (let nameRow = row; nameRow <= row + 3 && nameRow < data.length; nameRow++) {
-                  const nameRowData = data[nameRow] || [];
-                  for (let nameCol = Math.max(0, col - 3); nameCol < Math.min(col + 15, nameRowData.length); nameCol++) {
-                    const nameCell = nameRowData[nameCol];
-                    if (nameCell) {
-                      const nameStr = nameCell.toString().trim();
-                      // Check if this looks like a name (improved criteria)
-                      if (isValidEmployeeName(nameStr, nextStr)) {
-                        employeeInfo.push({
-                          name: nameStr,
-                          department: nextStr.toUpperCase(),
-                          column: nameCol
-                        });
-                        console.log(`✅ Found employee: ${nameStr} (${nextStr}) at column ${nameCol}`);
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      console.log(`Row ${row.toString().padStart(2, '0')}:`, rowData.slice(0, 10).map((cell, idx) => `[${idx}]:"${cell || ''}"`).join(', '));
     }
     
-    console.log(`📊 Found ${employeeInfo.length} employees:`, employeeInfo);
-    
-    if (employeeInfo.length === 0) {
-      console.log(`❌ No employees found in ${sheetName}`);
-      return results;
-    }
-    
-    // Step 2: Find date row by looking for sequential numbers 1-31
+    // Step 1: Find date row first (this is crucial)
     let dateRow = -1;
     let dateColumns: number[] = [];
     
-    for (let row = 0; row < Math.min(20, data.length); row++) {
+    console.log('\n=== 🗓️ FINDING DATE ROW ===');
+    for (let row = 0; row < Math.min(25, data.length); row++) {
       const rowData = data[row] || [];
       const potentialDates: number[] = [];
       const dateColIndexes: number[] = [];
       
-      for (let col = 0; col < Math.min(50, rowData.length); col++) {
+      for (let col = 0; col < Math.min(40, rowData.length); col++) {
         const cell = rowData[col];
         if (cell && /^\d{1,2}$/.test(cell.toString().trim())) {
           const num = parseInt(cell.toString().trim());
@@ -84,11 +33,13 @@ export const parseFlexibleAttendance = (data: any[][], sheetName: string, select
         }
       }
       
-      // If we found at least 10 valid dates, this is probably our date row
+      console.log(`Row ${row}: found ${potentialDates.length} valid dates: [${potentialDates.slice(0, 10).join(', ')}...]`);
+      
+      // If we found at least 10 dates in sequence, this is probably our date row
       if (potentialDates.length >= 10) {
         dateRow = row;
         dateColumns = dateColIndexes;
-        console.log(`✅ Found date row ${row} with ${potentialDates.length} dates: [${potentialDates.slice(0, 10).join(', ')}...]`);
+        console.log(`✅ Date row confirmed at ${row} with columns:`, dateColIndexes.slice(0, 10));
         break;
       }
     }
@@ -98,61 +49,176 @@ export const parseFlexibleAttendance = (data: any[][], sheetName: string, select
       return results;
     }
     
-    // Step 3: For each employee, find their attendance data
-    for (const employee of employeeInfo) {
-      console.log(`\n👤 Processing ${employee.name} (${employee.department}) at column ${employee.column}`);
+    // Step 2: Look for employees more broadly - scan entire sheet for name patterns
+    console.log('\n=== 👥 FINDING EMPLOYEES ===');
+    const employeeInfo: Array<{name: string; department: string; row: number; column: number}> = [];
+    
+    // Scan the entire sheet for potential employee names and departments
+    for (let row = 0; row < Math.min(30, data.length); row++) {
+      const rowData = data[row] || [];
       
-      // Look for time data in rows after the date row
-      for (let timeRow = dateRow + 1; timeRow < Math.min(dateRow + 15, data.length); timeRow++) {
+      for (let col = 0; col < Math.min(20, rowData.length); col++) {
+        const cell = rowData[col];
+        if (!cell) continue;
+        
+        const cellStr = cell.toString().trim();
+        const cellLower = cellStr.toLowerCase();
+        
+        // Look for department patterns first
+        if (cellLower.includes('rnd') || cellLower.includes('r&d') || cellLower.includes('office')) {
+          console.log(`🏢 Found department "${cellStr}" at [${row}][${col}]`);
+          
+          // Look for names in nearby cells (same row, adjacent rows, same column)
+          const searchAreas = [
+            // Same row - left and right
+            { startRow: row, endRow: row, startCol: Math.max(0, col - 3), endCol: Math.min(col + 5, rowData.length) },
+            // Above and below rows
+            { startRow: Math.max(0, row - 2), endRow: Math.min(row + 3, data.length), startCol: col, endCol: col + 1 },
+            // Adjacent columns in nearby rows
+            { startRow: Math.max(0, row - 1), endRow: Math.min(row + 2, data.length), startCol: Math.max(0, col - 2), endCol: Math.min(col + 3, rowData.length) }
+          ];
+          
+          for (const area of searchAreas) {
+            for (let searchRow = area.startRow; searchRow < area.endRow; searchRow++) {
+              const searchRowData = data[searchRow] || [];
+              for (let searchCol = area.startCol; searchCol < area.endCol; searchCol++) {
+                const nameCell = searchRowData[searchCol];
+                if (nameCell && nameCell !== cell) {
+                  const nameStr = nameCell.toString().trim();
+                  if (isValidEmployeeName(nameStr, cellStr)) {
+                    const dept = cellStr.toUpperCase().includes('RND') ? 'RND' : 'OFFICE';
+                    employeeInfo.push({
+                      name: nameStr,
+                      department: dept,
+                      row: searchRow,
+                      column: searchCol
+                    });
+                    console.log(`✅ Found employee: "${nameStr}" (${dept}) at [${searchRow}][${searchCol}]`);
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Also try to find standalone names that look like employees
+        if (isLikelyEmployeeName(cellStr) && row < dateRow) {
+          // Look for department info nearby
+          let foundDept = '';
+          for (let deptRow = Math.max(0, row - 2); deptRow <= Math.min(row + 2, data.length - 1); deptRow++) {
+            const deptRowData = data[deptRow] || [];
+            for (let deptCol = Math.max(0, col - 3); deptCol <= Math.min(col + 3, deptRowData.length - 1); deptCol++) {
+              const deptCell = deptRowData[deptCol];
+              if (deptCell) {
+                const deptStr = deptCell.toString().toLowerCase();
+                if (deptStr.includes('rnd') || deptStr.includes('r&d')) {
+                  foundDept = 'RND';
+                  break;
+                } else if (deptStr.includes('office')) {
+                  foundDept = 'OFFICE';
+                  break;
+                }
+              }
+            }
+            if (foundDept) break;
+          }
+          
+          if (foundDept) {
+            employeeInfo.push({
+              name: cellStr,
+              department: foundDept,
+              row: row,
+              column: col
+            });
+            console.log(`✅ Found standalone employee: "${cellStr}" (${foundDept}) at [${row}][${col}]`);
+          }
+        }
+      }
+    }
+    
+    console.log(`📊 Total employees found: ${employeeInfo.length}`);
+    employeeInfo.forEach((emp, idx) => {
+      console.log(`  ${idx + 1}. ${emp.name} (${emp.department}) at [${emp.row}][${emp.column}]`);
+    });
+    
+    if (employeeInfo.length === 0) {
+      console.log(`❌ No employees found in ${sheetName}`);
+      return results;
+    }
+    
+    // Step 3: For each employee, find their attendance data
+    console.log('\n=== 📊 PROCESSING ATTENDANCE DATA ===');
+    
+    for (const employee of employeeInfo) {
+      console.log(`\n👤 Processing ${employee.name} (${employee.department})`);
+      
+      // Look for attendance data in rows after the date row
+      // Check columns around the employee's position
+      const searchCols = [];
+      
+      // Add employee's column and nearby columns
+      for (let offset = -2; offset <= 3; offset++) {
+        const col = employee.column + offset;
+        if (col >= 0) searchCols.push(col);
+      }
+      
+      // Also check columns that align with dates
+      dateColumns.slice(0, 15).forEach(col => {
+        if (!searchCols.includes(col)) searchCols.push(col);
+      });
+      
+      console.log(`  Searching columns: [${searchCols.slice(0, 10).join(', ')}...]`);
+      
+      // Look in rows after date row for time data
+      for (let timeRowOffset = 1; timeRowOffset <= 10; timeRowOffset++) {
+        const timeRow = dateRow + timeRowOffset;
+        if (timeRow >= data.length) break;
+        
         const timeRowData = data[timeRow] || [];
         
-        // Check if this row has time data for our employee column area
-        const startCol = Math.max(0, employee.column - 2);
-        const endCol = Math.min(employee.column + 5, timeRowData.length);
+        // Check if this row has any time-like data
+        let hasTimeData = false;
+        for (const col of searchCols.slice(0, 10)) {
+          const cell = timeRowData[col];
+          if (cell && cell.toString().trim() && looksLikeTimeData(cell.toString().trim())) {
+            hasTimeData = true;
+            break;
+          }
+        }
         
-        for (let checkCol = startCol; checkCol < endCol; checkCol++) {
-          const timeCell = timeRowData[checkCol];
+        if (hasTimeData) {
+          console.log(`  Found time data in row ${timeRow}`);
           
-          if (timeCell && timeCell.toString().trim()) {
-            // Check if this column has corresponding dates
-            for (let i = 0; i < dateColumns.length; i++) {
-              const dateColIndex = dateColumns[i];
-              const dateCell = data[dateRow][dateColIndex];
-              const attendanceCell = timeRowData[dateColIndex];
-              
-              if (dateCell && attendanceCell) {
-                const day = parseInt(dateCell.toString().trim());
-                const timeStr = attendanceCell.toString().trim();
+          // Process dates for this employee
+          for (let i = 0; i < Math.min(dateColumns.length, 31); i++) {
+            const dateCol = dateColumns[i];
+            const dateCell = data[dateRow][dateCol];
+            
+            if (dateCell) {
+              const day = parseInt(dateCell.toString().trim());
+              if (day >= 1 && day <= 31) {
+                const attendanceCell = timeRowData[dateCol];
                 
-                if (day >= 1 && day <= 31 && timeStr && timeStr !== '' && timeStr !== '-') {
+                if (attendanceCell && attendanceCell.toString().trim()) {
+                  const timeStr = attendanceCell.toString().trim();
                   const tanggal = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
                   
-                  // Parse time or check for absence
+                  // Parse attendance data
                   let jamMasuk: string | null = null;
                   let jamPulang: string | null = null;
                   
-                  const timeLower = timeStr.toLowerCase();
-                  
-                  if (timeLower.includes('absen') || timeLower.includes('ijin') || 
-                      timeLower.includes('sakit') || timeLower.includes('cuti')) {
-                    // This is an absence record - skip for now
-                    console.log(`📅 ${tanggal}: ${employee.name} - ABSENT (${timeStr})`);
-                    continue;
-                  } else if (timeStr.includes('\n') || timeStr.includes('\r')) {
-                    // Time data with newlines (masuk/pulang)
+                  if (timeStr.includes('\n') || timeStr.includes('\r')) {
+                    // Multi-line time data
                     const times = timeStr.split(/[\n\r]+/).map(t => t.trim()).filter(t => t);
                     if (times.length >= 1) jamMasuk = parseTimeFlexible(times[0]);
                     if (times.length >= 2) jamPulang = parseTimeFlexible(times[1]);
-                    console.log(`📅 ${tanggal}: ${employee.name} - IN: ${jamMasuk}, OUT: ${jamPulang}`);
                   } else {
-                    // Single time entry - assume it's jam masuk
+                    // Single time entry
                     jamMasuk = parseTimeFlexible(timeStr);
-                    console.log(`📅 ${tanggal}: ${employee.name} - IN: ${jamMasuk}`);
                   }
                   
-                  // Add to results if we have valid attendance data
                   if (jamMasuk || jamPulang) {
-                    const status = employee.department.includes('RND') ? 'Magang' : 'Karyawan';
+                    const status = employee.department === 'RND' ? 'Magang' : 'Karyawan';
                     const terlambat = jamMasuk ? jamMasuk > '10:00:00' : false;
                     const pulang_tercatat = jamPulang ? 
                       (jamPulang >= '15:00:00' && jamPulang <= '17:00:00') : false;
@@ -166,12 +232,14 @@ export const parseFlexibleAttendance = (data: any[][], sheetName: string, select
                       terlambat,
                       pulang_tercatat
                     });
+                    
+                    console.log(`    ✅ ${tanggal}: ${jamMasuk || 'N/A'} - ${jamPulang || 'N/A'}`);
                   }
                 }
               }
             }
-            break; // Found time data for this employee, move to next employee
           }
+          break; // Found time row for this employee, move to next employee
         }
       }
     }
@@ -185,17 +253,57 @@ export const parseFlexibleAttendance = (data: any[][], sheetName: string, select
 };
 
 const isValidEmployeeName = (nameStr: string, deptStr: string): boolean => {
+  const name = nameStr.toLowerCase().trim();
+  const dept = deptStr.toLowerCase();
+  
   return nameStr.length >= 2 && 
-         nameStr.length <= 25 &&
-         !nameStr.toLowerCase().includes('nama') &&
-         !nameStr.toLowerCase().includes('departemen') &&
-         !nameStr.toLowerCase().includes('office') &&
-         !nameStr.toLowerCase().includes('rnd') &&
+         nameStr.length <= 30 &&
+         !name.includes('nama') &&
+         !name.includes('name') &&
+         !name.includes('departemen') &&
+         !name.includes('department') &&
+         !name.includes('office') &&
+         !name.includes('rnd') &&
+         !name.includes('r&d') &&
+         !name.includes('jam') &&
+         !name.includes('masuk') &&
+         !name.includes('pulang') &&
+         !name.includes('tanggal') &&
+         !name.includes('date') &&
+         !name.includes('absen') &&
+         !name.includes('hadir') &&
          /[a-zA-Z]/.test(nameStr) &&
          !nameStr.match(/^\d+$/) &&
          nameStr !== deptStr &&
          nameStr !== '-' &&
          nameStr !== '';
+};
+
+const isLikelyEmployeeName = (str: string): boolean => {
+  const cleanStr = str.trim();
+  const lowerStr = cleanStr.toLowerCase();
+  
+  return cleanStr.length >= 2 &&
+         cleanStr.length <= 25 &&
+         /^[a-zA-Z\s]+$/.test(cleanStr) &&
+         !lowerStr.includes('nama') &&
+         !lowerStr.includes('department') &&
+         !lowerStr.includes('jam') &&
+         !lowerStr.includes('tanggal') &&
+         !lowerStr.includes('office') &&
+         !lowerStr.includes('rnd') &&
+         !lowerStr.includes('absen') &&
+         cleanStr !== cleanStr.toUpperCase() &&
+         cleanStr !== cleanStr.toLowerCase();
+};
+
+const looksLikeTimeData = (str: string): boolean => {
+  const cleanStr = str.trim();
+  return /\d{1,2}[:\.]?\d{0,2}/.test(cleanStr) ||
+         cleanStr.toLowerCase().includes('absen') ||
+         cleanStr.toLowerCase().includes('ijin') ||
+         cleanStr.toLowerCase().includes('sakit') ||
+         cleanStr.toLowerCase().includes('cuti');
 };
 
 const parseTimeFlexible = (timeStr: string): string | null => {
