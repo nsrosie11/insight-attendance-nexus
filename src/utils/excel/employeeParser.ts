@@ -1,12 +1,12 @@
 
 export const findEmployeeInfo = (data: any[][]): { nama: string; status: string } | null => {
   let nama = '';
-  let status = 'Karyawan'; // default dengan huruf kapital
+  let departemen = '';
   
   console.log('Looking for employee info in sheet...');
   console.log('First 10 rows of data:', data.slice(0, 10));
   
-  // Look for nama pattern in first 10 rows and first 10 columns
+  // Look for nama pattern in first 10 rows and first 15 columns
   for (let row = 0; row < Math.min(data.length, 10); row++) {
     for (let col = 0; col < Math.min((data[row] || []).length, 15); col++) {
       const cell = data[row] && data[row][col];
@@ -39,7 +39,7 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
                   !adjStr.toLowerCase().includes('rnd') &&
                   adjStr.length > 2 && adjStr.length < 30 &&
                   adjStr.match(/^[a-zA-Z\s]+$/)) {
-                nama = adjStr;
+                nama = adjStr.toLowerCase(); // Convert to lowercase for consistency
                 console.log(`Found employee name: ${nama}`);
                 break;
               }
@@ -49,7 +49,7 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
           if (nama) break;
         }
         
-        // Look for department to determine status
+        // Look for department
         if (cellStr.toLowerCase().includes('dept') || cellStr.toLowerCase() === 'departemen') {
           console.log(`Found department keyword at [${row}][${col}]`);
           
@@ -65,12 +65,12 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
               const adjStr = adjCell.toUpperCase().trim();
               console.log(`Checking department value: "${adjStr}"`);
               if (adjStr.includes('RND')) {
-                status = 'Magang'; // Gunakan huruf kapital
-                console.log(`Department: RND - status set to Magang`);
+                departemen = 'RND';
+                console.log(`Department: RND found`);
                 break;
               } else if (adjStr.includes('OFFICE')) {
-                status = 'Karyawan'; // Gunakan huruf kapital
-                console.log(`Department: OFFICE - status set to Karyawan`);
+                departemen = 'OFFICE';
+                console.log(`Department: OFFICE found`);
                 break;
               }
             }
@@ -79,13 +79,13 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
       }
     }
     
-    if (nama) break;
+    if (nama && departemen) break;
   }
   
   if (!nama) {
-    console.log('No employee name found with "Nama" keyword, trying alternative approach...');
+    console.log('No employee name found, trying alternative approach...');
     
-    // Alternative: look for names in specific positions based on screenshot
+    // Alternative: look for names in specific positions
     for (let row = 0; row < Math.min(data.length, 8); row++) {
       for (let col = 8; col < Math.min((data[row] || []).length, 15); col++) {
         const cell = data[row] && data[row][col];
@@ -103,7 +103,7 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
               !cellStr.toLowerCase().includes('tanggal') &&
               !cellStr.toLowerCase().includes('no')) {
             
-            nama = cellStr;
+            nama = cellStr.toLowerCase();
             console.log(`Found potential employee name: ${nama} at [${row}][${col}]`);
             break;
           }
@@ -119,6 +119,14 @@ export const findEmployeeInfo = (data: any[][]): { nama: string; status: string 
     return null;
   }
   
-  console.log(`Final employee info: ${nama} with status: ${status}`);
+  // Convert department to status
+  let status = 'Karyawan'; // default
+  if (departemen === 'RND') {
+    status = 'Magang';
+  } else if (departemen === 'OFFICE') {
+    status = 'Karyawan';
+  }
+  
+  console.log(`Final employee info: ${nama} with department: ${departemen} -> status: ${status}`);
   return { nama, status };
 };

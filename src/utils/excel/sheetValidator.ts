@@ -1,24 +1,38 @@
 
-const isNumericSheetName = (sheetName: string): boolean => {
-  // Check if sheet name contains only numbers and dots (like 14.15.17)
-  return /^[\d.]+$/.test(sheetName);
-};
-
 export const shouldProcessSheet = (sheetName: string, allSheetNames: string[]): boolean => {
-  // Skip if not numeric sheet name
-  if (!isNumericSheetName(sheetName)) {
+  console.log(`Checking if sheet "${sheetName}" should be processed`);
+  
+  // Skip "Log" sheet
+  if (sheetName.toLowerCase().includes('log')) {
+    console.log(`Skipping sheet "${sheetName}" - contains "log"`);
     return false;
   }
   
-  // Find index of sheet 14.15.17
-  const startSheetIndex = allSheetNames.findIndex(name => name === '14.15.17');
-  const currentSheetIndex = allSheetNames.indexOf(sheetName);
+  // Check if it's a numeric sheet name starting from 14.15.17
+  const numericPattern = /^\d+(\.\d+)*$/;
   
-  // If 14.15.17 exists, process from that sheet onwards
-  if (startSheetIndex !== -1) {
-    return currentSheetIndex >= startSheetIndex;
+  if (numericPattern.test(sheetName)) {
+    // Parse the sheet number for comparison
+    const sheetNumber = parseFloat(sheetName.replace(/\./g, ''));
+    const minimumNumber = parseFloat('141517');
+    
+    if (sheetNumber >= minimumNumber) {
+      console.log(`Processing numeric sheet "${sheetName}" - valid number`);
+      return true;
+    } else {
+      console.log(`Skipping sheet "${sheetName}" - number too low`);
+      return false;
+    }
   }
   
-  // If 14.15.17 doesn't exist, process all numeric sheets
-  return true;
+  // Also process sheets that might contain employee names (fallback)
+  if (sheetName.length > 2 && sheetName.length < 20 && 
+      sheetName.match(/^[a-zA-Z\s]+$/) && 
+      !sheetName.toLowerCase().includes('sheet')) {
+    console.log(`Processing potential employee sheet "${sheetName}"`);
+    return true;
+  }
+  
+  console.log(`Skipping sheet "${sheetName}" - doesn't match criteria`);
+  return false;
 };
