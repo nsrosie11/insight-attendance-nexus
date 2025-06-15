@@ -2,65 +2,69 @@
 export const findEmployeeInfo = (data: any[][], columnIndex: number): { nama: string; status: string } | null => {
   console.log(`\n🔍 Looking for employee info at column ${columnIndex}...`);
   
-  // Look for employee cards in the first 20 rows
-  for (let row = 0; row < Math.min(data.length, 20); row++) {
+  let employeeName = '';
+  let department = '';
+  
+  // Look for employee name and department in the first 15 rows
+  for (let row = 0; row < Math.min(data.length, 15); row++) {
     const rowData = data[row] || [];
+    const cell = rowData[columnIndex];
     
-    // Check if this cell contains a potential employee name
-    const nameCell = rowData[columnIndex];
-    if (nameCell && nameCell.toString().trim()) {
-      const nameStr = nameCell.toString().trim().toLowerCase();
+    if (cell && cell.toString().trim()) {
+      const cellStr = cell.toString().trim();
+      const cellLower = cellStr.toLowerCase();
+      const cellUpper = cellStr.toUpperCase();
       
-      // Skip if it's clearly not a name (contains numbers, dates, or common non-name words)
-      if (nameStr.match(/^\d+$/) || // just numbers
-          nameStr.match(/\d{1,2}:\d{2}/) || // time format
-          nameStr.match(/^\d{1,2}$/) || // single/double digits (dates)
-          nameStr.includes('jam') ||
-          nameStr.includes('masuk') ||
-          nameStr.includes('pulang') ||
-          nameStr.includes('tanggal') ||
-          nameStr.includes('hari') ||
-          nameStr.includes('tgl') ||
-          nameStr === '' ||
-          nameStr === '-' ||
-          nameStr.length < 2 ||
-          nameStr.length > 25) {
+      console.log(`  📋 Checking [${row}][${columnIndex}]: "${cellStr}"`);
+      
+      // Check for department first (RND or OFFICE)
+      if (cellUpper.includes('RND') || cellUpper.includes('R&D')) {
+        department = 'RND';
+        console.log(`    ✅ Found RND department at [${row}][${columnIndex}]`);
+        continue;
+      } else if (cellUpper.includes('OFFICE')) {
+        department = 'OFFICE';
+        console.log(`    ✅ Found OFFICE department at [${row}][${columnIndex}]`);
         continue;
       }
       
-      console.log(`🔍 Potential name found: "${nameStr}" at [${row}][${columnIndex}]`);
-      
-      // Look for department info in the next few rows in the same column
-      let departemen = '';
-      for (let deptRow = row + 1; deptRow < Math.min(data.length, row + 10); deptRow++) {
-        const deptRowData = data[deptRow] || [];
-        const deptCell = deptRowData[columnIndex];
+      // Check for employee name (avoid header text, numbers, times, etc.)
+      if (!employeeName && 
+          cellStr.length >= 3 && 
+          cellStr.length <= 25 &&
+          !cellLower.includes('nama') &&
+          !cellLower.includes('employee') &&
+          !cellLower.includes('karyawan') &&
+          !cellLower.includes('jam') &&
+          !cellLower.includes('masuk') &&
+          !cellLower.includes('pulang') &&
+          !cellLower.includes('tanggal') &&
+          !cellLower.includes('hari') &&
+          !cellLower.includes('tgl') &&
+          !cellLower.includes('date') &&
+          !cellStr.match(/^\d+$/) && // not just numbers
+          !cellStr.match(/\d{1,2}:\d{2}/) && // not time format
+          !cellStr.match(/^\d{1,2}$/) && // not single/double digits
+          cellStr !== '-' &&
+          cellStr !== '' &&
+          // Must contain at least one letter
+          /[a-zA-Z]/.test(cellStr) &&
+          // Should not be all uppercase (likely headers)
+          cellStr !== cellUpper) {
         
-        if (deptCell && deptCell.toString().trim()) {
-          const deptStr = deptCell.toString().toUpperCase().trim();
-          console.log(`🔍 Checking dept at [${deptRow}][${columnIndex}]: "${deptStr}"`);
-          
-          if (deptStr.includes('RND') || deptStr.includes('R&D')) {
-            departemen = 'RND';
-            console.log(`✅ Found RND department for ${nameStr}`);
-            break;
-          } else if (deptStr.includes('OFFICE')) {
-            departemen = 'OFFICE';
-            console.log(`✅ Found OFFICE department for ${nameStr}`);
-            break;
-          }
-        }
-      }
-      
-      // If we found a name and department, determine status
-      if (departemen) {
-        const status = departemen === 'RND' ? 'Magang' : 'Karyawan';
-        console.log(`✅ Employee found: ${nameStr} (${departemen}) -> ${status}`);
-        return { nama: nameStr, status };
+        employeeName = cellStr;
+        console.log(`    ✅ Found potential employee name: "${employeeName}" at [${row}][${columnIndex}]`);
       }
     }
   }
   
-  console.log(`❌ No employee info found at column ${columnIndex}`);
+  // If we found both name and department, return the result
+  if (employeeName && department) {
+    const status = department === 'RND' ? 'Magang' : 'Karyawan';
+    console.log(`✅ Employee found: ${employeeName} (${department}) -> ${status}`);
+    return { nama: employeeName, status };
+  }
+  
+  console.log(`❌ No complete employee info found at column ${columnIndex} (name: ${employeeName}, dept: ${department})`);
   return null;
 };
